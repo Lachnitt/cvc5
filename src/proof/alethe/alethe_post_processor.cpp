@@ -243,12 +243,25 @@ bool AletheProofPostprocessCallback::update(Node res,
     //======================== Builtin theory (common node operations)
     case PfRule::EVALUATE:
     {
-      addAletheStep(AletheRule::LIA_GENERIC,
-                    res,
-                    nm->mkNode(kind::SEXPR, d_cl, res),
-                    {},
-                    {},
-                    *cdp);
+      theory::TheoryId tid;
+      if (!theory::builtin::BuiltinProofRuleChecker::getTheoryId(args[1], tid))
+      {
+        return addAletheStep(AletheRule::UNDEFINED,
+                             res,
+                             nm->mkNode(kind::SEXPR, d_cl, res),
+                             children,
+                             {},
+                             *cdp);
+      }
+      if (tid == theory::TheoryId::THEORY_ARITH)
+      {
+        return addAletheStep(AletheRule::LIA_GENERIC,
+                             res,
+                             nm->mkNode(kind::SEXPR, d_cl, res),
+                             {},
+                             {},
+                             *cdp);
+      }
     }
     // The rule is translated according to the theory id tid and the outermost
     // connective of the first term in the conclusion F, since F always has the
@@ -901,17 +914,18 @@ bool AletheProofPostprocessCallback::update(Node res,
     //  --------------------------------- RESOLUTION
     //              (cl F2)*
     //
+    // VP1: (cl (not (= F1 F2)) (not F1) F2)
+    //
     // * the corresponding proof node is F2
     case PfRule::EQ_RESOLVE:
     {
       bool success = true;
-      Node vp1 =
-          nm->mkNode(kind::SEXPR,
-                     {d_cl, children[1].notNode(), children[0].notNode(), res});
       Node child1 = children[0];
 
+      Node vp1;
       // Transform (cl F1 ... Fn) into (cl (or F1 ... Fn))
-      if (children[0].notNode() != vp1[1] && children[0].getKind() == kind::OR)
+      if (children[0].notNode() != children[1].notNode()
+          && children[0].getKind() == kind::OR)
       {
         PfRule pr = cdp->getProofFor(child1)->getRule();
         if (pr != PfRule::ASSUME && pr != PfRule::EQ_RESOLVE)
@@ -946,6 +960,10 @@ bool AletheProofPostprocessCallback::update(Node res,
           child1 = vp4;
         }
       }
+
+      vp1 =
+          nm->mkNode(kind::SEXPR,
+                     {d_cl, children[1].notNode(), children[0].notNode(), res});
 
       success &= addAletheStep(AletheRule::EQUIV_POS2, vp1, vp1, {}, {}, *cdp);
 
@@ -1517,6 +1535,44 @@ bool AletheProofPostprocessCallback::update(Node res,
                               *cdp);
     }
     //================================================= Quantifiers rules
+    case PfRule::SKOLEMIZE:
+    {
+      if (res.getKind() != kind::NOT)
+      {
+        Node vp1 = nm->mkNode(
+            kind::SEXPR, d_cl, nm->mkNode(kind::EQUAL, children[0], res));
+        return addAletheStep(AletheRule::SKO_EX, vp1, vp1, {}, {}, *cdp)
+               && cdp->addStep(
+                   res, PfRule::EQ_RESOLVE, {vp1, children[0]}, args);
+      }
+      Node vp1 = nm->mkNode(
+          kind::SEXPR, d_cl, nm->mkNode(kind::EQUAL, children[0][0], res));
+      return addAletheStep(AletheRule::SKO_FORALL, vp1, vp1, {}, {}, *cdp)
+             && addAletheStep(AletheRule::RESOLUTION,
+                              res,
+                              nm->mkNode(kind::SEXPR, d_cl, res),
+                              {vp1, children[0]},
+                              {},
+                              *cdp);
+      // Transform (not ((forall x) P)) into ((exists x) P)
+      // (cl ((exists x) P x) (P x*sigma))
+      //
+      /*Node vp1 =
+      nm->mkNode(kind::SEXPR,d_cl,d_nm->mkNode(kind::EQUAL,children[0],res); //
+      (cl (= (exists ((x1 T1) ... (xn Tn)) F) (F*sigma))) Node vp1 =
+      nm->mkNode(kind::SEXPR,d_cl,d_nm->mkNode(kind::EXISTS,res[0][0],res[0][1]),res);
+      // (cl (exists Node vp2 = nm->mkNode(kind::SEXPR,d_cl,vp1, return
+      addAletheStep(AletheRule::REFL,vp1,vp1,{},{},*cdp)
+      &&
+
+              addAletheStep(AletheRule::UNDEFINED,
+                            res,
+                            nm->mkNode(kind::SEXPR, d_cl, res),
+                            children,
+                            args,
+                            *cdp);
+                            */
+    }
     // ======== Instantiate
     // See proof_rule.h for documentation on the INSTANTIATE rule. This
     // comment uses variable names as introduced there.
@@ -2024,7 +2080,7 @@ bool AletheProofPostprocessCallback::update(Node res,
       Trace("alethe-proof")
           << "... rule not translated yet " << id << " / " << res << " "
           << children << " " << args << std::endl;
-      std::cout << id << std::endl;
+      std::cout << "UNTRANSLATED RULE FOUND " << id << std::endl;
       return addAletheStep(AletheRule::UNDEFINED,
                            res,
                            nm->mkNode(kind::SEXPR, d_cl, res),
