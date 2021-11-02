@@ -23,6 +23,8 @@
 #include <unordered_set>
 
 #include "proof/proof_node_updater.h"
+#include "rewriter/rewrite_db_proof_cons.h"
+#include "rewriter/rewrites.h"
 #include "smt/proof_final_callback.h"
 #include "smt/witness_form.h"
 #include "theory/inference_id.h"
@@ -32,14 +34,10 @@ namespace cvc5 {
 
 class Env;
 
-namespace rewriter {
-class RewriteDb;
-}
-
 namespace smt {
 
 /**
- * A callback class used by SmtEngine for post-processing proof nodes by
+ * A callback class used by SolverEngine for post-processing proof nodes by
  * connecting proofs of preprocessing, and expanding macro PfRule applications.
  */
 class ProofPostprocessCallback : public ProofNodeUpdaterCallback
@@ -83,6 +81,8 @@ class ProofPostprocessCallback : public ProofNodeUpdaterCallback
   ProofNodeManager* d_pnm;
   /** The preprocessing proof generator */
   ProofGenerator* d_pppg;
+  /** The rewrite database proof generator */
+  rewriter::RewriteDbProofCons d_rdbPc;
   /** The witness form proof generator */
   WitnessFormGenerator d_wfpm;
   /** The witness form assumptions used in the proof */
@@ -244,7 +244,7 @@ class ProofPostprocessCallback : public ProofNodeUpdaterCallback
 
 /**
  * The proof postprocessor module. This postprocesses the final proof
- * produced by an SmtEngine. Its main two tasks are to:
+ * produced by an SolverEngine. Its main two tasks are to:
  * (1) Connect proofs of preprocessing,
  * (2) Expand macro PfRule applications.
  */
@@ -267,6 +267,8 @@ class ProofPostproccess
   void process(std::shared_ptr<ProofNode> pf);
   /** set eliminate rule */
   void setEliminateRule(PfRule rule);
+  /** Set assertions (for debugging whether the final proof is closed) */
+  void setAssertions(const std::vector<Node>& assertions);
 
  private:
   /** The post process callback */

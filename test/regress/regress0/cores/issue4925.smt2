@@ -1,4 +1,4 @@
-; COMMAND-LINE: --no-check-proofs
+; COMMAND-LINE: --no-produce-proofs
 ; EXPECT: sat
 ; EXPECT: unsat
 ; EXPECT: unsat
@@ -12,5 +12,5 @@
 (assert (or (< a 1) (> c 1)))
 (check-sat)
 (assert (= b (- 1)))
-(check-sat true)
+(check-sat-assuming (true))
 (check-sat)

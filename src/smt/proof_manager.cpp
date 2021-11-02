@@ -23,9 +23,14 @@
 #include "proof/alethe/alethe_post_processor.h"
 #include "proof/alethe/alethe_printer.h"
 #include "proof/dot/dot_printer.h"
+#include "proof/lean/lean_post_processor.h"
+#include "proof/lean/lean_printer.h"
+#include "proof/lfsc/lfsc_post_processor.h"
+#include "proof/lfsc/lfsc_printer.h"
 #include "proof/proof_checker.h"
 #include "proof/proof_node_algorithm.h"
 #include "proof/proof_node_manager.h"
+#include "rewriter/rewrite_db.h"
 #include "smt/assertions.h"
 #include "smt/difficulty_post_processor.h"
 #include "smt/env.h"
@@ -37,10 +42,12 @@ namespace smt {
 
 PfManager::PfManager(Env& env)
     : EnvObj(env),
+      d_rewriteDb(new rewriter::RewriteDb),
       d_pchecker(new ProofChecker(
           options().proof.proofCheck == options::ProofCheckMode::EAGER,
-          options().proof.proofPedantic)),
-      d_pnm(new ProofNodeManager(d_pchecker.get())),
+          options().proof.proofPedantic,
+          d_rewriteDb.get())),
+      d_pnm(new ProofNodeManager(env.getRewriter(), d_pchecker.get())),
       d_pppg(new PreprocessProofGenerator(
           d_pnm.get(), env.getUserContext(), "smt::PreprocessProofGenerator")),
       d_pfpp(nullptr),
@@ -68,11 +75,12 @@ PfManager::PfManager(Env& env)
   d_pfpp.reset(new ProofPostproccess(
       env,
       d_pppg.get(),
-      nullptr,
-      options::proofFormatMode() != options::ProofFormatMode::ALETHE));
+      d_rewriteDb.get(),
+      options().proof.proofFormatMode != options::ProofFormatMode::ALETHE));
 
   // add rules to eliminate here
-  if (options::proofGranularityMode() != options::ProofGranularityMode::OFF)
+  if (options().proof.proofGranularityMode
+      != options::ProofGranularityMode::OFF)
   {
     d_pfpp->setEliminateRule(PfRule::MACRO_SR_EQ_INTRO);
     d_pfpp->setEliminateRule(PfRule::MACRO_SR_PRED_INTRO);
@@ -89,7 +97,7 @@ PfManager::PfManager(Env& env)
     {
       d_pfpp->setEliminateRule(PfRule::SUBS);
       d_pfpp->setEliminateRule(PfRule::REWRITE);
-      if (options::proofGranularityMode()
+      if (options().proof.proofGranularityMode
           != options::ProofGranularityMode::THEORY_REWRITE)
       {
         // this eliminates theory rewriting steps with finer-grained DSL rules
@@ -109,12 +117,12 @@ void PfManager::setFinalProof(std::shared_ptr<ProofNode> pfn, Assertions& as)
 {
   // Note this assumes that setFinalProof is only called once per unsat
   // response. This method would need to cache its result otherwise.
-  Trace("smt-proof") << "SmtEngine::setFinalProof(): get proof body...\n";
+  Trace("smt-proof") << "SolverEngine::setFinalProof(): get proof body...\n";
 
   if (Trace.isOn("smt-proof-debug"))
   {
     Trace("smt-proof-debug")
-        << "SmtEngine::setFinalProof(): Proof node for false:\n";
+        << "SolverEngine::setFinalProof(): Proof node for false:\n";
     Trace("smt-proof-debug") << *pfn.get() << std::endl;
     Trace("smt-proof-debug") << "=====" << std::endl;
   }
@@ -124,18 +132,19 @@ void PfManager::setFinalProof(std::shared_ptr<ProofNode> pfn, Assertions& as)
 
   if (Trace.isOn("smt-proof"))
   {
-    Trace("smt-proof") << "SmtEngine::setFinalProof(): get free assumptions..."
-                       << std::endl;
+    Trace("smt-proof")
+        << "SolverEngine::setFinalProof(): get free assumptions..."
+        << std::endl;
     std::vector<Node> fassumps;
     expr::getFreeAssumptions(pfn.get(), fassumps);
     Trace("smt-proof")
-        << "SmtEngine::setFinalProof(): initial free assumptions are:\n";
+        << "SolverEngine::setFinalProof(): initial free assumptions are:\n";
     for (const Node& a : fassumps)
     {
       Trace("smt-proof") << "- " << a << std::endl;
     }
 
-    Trace("smt-proof") << "SmtEngine::setFinalProof(): assertions are:\n";
+    Trace("smt-proof") << "SolverEngine::setFinalProof(): assertions are:\n";
     for (const Node& n : assertions)
     {
       Trace("smt-proof") << "- " << n << std::endl;
@@ -143,16 +152,17 @@ void PfManager::setFinalProof(std::shared_ptr<ProofNode> pfn, Assertions& as)
     Trace("smt-proof") << "=====" << std::endl;
   }
 
-  Trace("smt-proof") << "SmtEngine::setFinalProof(): postprocess...\n";
+  Trace("smt-proof") << "SolverEngine::setFinalProof(): postprocess...\n";
   Assert(d_pfpp != nullptr);
+  d_pfpp->setAssertions(assertions);
   d_pfpp->process(pfn);
 
-  Trace("smt-proof") << "SmtEngine::setFinalProof(): make scope...\n";
+  Trace("smt-proof") << "SolverEngine::setFinalProof(): make scope...\n";
 
   // Now make the final scope, which ensures that the only open leaves of the
   // proof are the assertions.
   d_finalProof = d_pnm->mkScope(pfn, assertions);
-  Trace("smt-proof") << "SmtEngine::setFinalProof(): finished.\n";
+  Trace("smt-proof") << "SolverEngine::setFinalProof(): finished.\n";
 }
 
 void PfManager::printProof(std::ostream& out,
@@ -163,29 +173,45 @@ void PfManager::printProof(std::ostream& out,
   std::shared_ptr<ProofNode> fp = getFinalProof(pfn, as);
   // if we are in incremental mode, we don't want to invalidate the proof
   // nodes in fp, since these may be reused in further check-sat calls
-  if (options::incrementalSolving()
-      && options::proofFormatMode() != options::ProofFormatMode::NONE)
+  if (options().base.incrementalSolving
+      && options().proof.proofFormatMode != options::ProofFormatMode::NONE)
   {
     fp = d_pnm->clone(fp);
   }
-  // TODO (proj #37) according to the proof format, post process the proof node
-  // TODO (proj #37) according to the proof format, print the proof node
 
   // according to the proof format, post process and print the proof node
-  if (options::proofFormatMode() == options::ProofFormatMode::DOT)
+  if (options().proof.proofFormatMode == options::ProofFormatMode::DOT)
   {
     proof::DotPrinter dotPrinter;
     dotPrinter.print(out, fp.get());
   }
-  else if (options::proofFormatMode() == options::ProofFormatMode::ALETHE)
+  else if (options().proof.proofFormatMode == options::ProofFormatMode::LEAN)
+  {
+    proof::LeanProofPostprocess lpfpp(d_pnm.get());
+    std::vector<Node> assertions;
+    getAssertions(as, assertions);
+    lpfpp.process(fp);
+    proof::LeanPrinter::print(out, assertions, fp);
+  }
+  else if (options().proof.proofFormatMode == options::ProofFormatMode::ALETHE)
   {
     proof::AletheNodeConverter anc;
     proof::AletheProofPostprocess vpfpp(d_pnm.get(), anc);
     vpfpp.process(fp);
-    proof::AletheProofPrinter vpp(true);
+    proof::AletheProofPrinter vpp;
     vpp.alethePrinter(out, fp);
   }
-  else if (options::proofFormatMode() == options::ProofFormatMode::TPTP)
+  else if (options().proof.proofFormatMode == options::ProofFormatMode::LFSC)
+  {
+    std::vector<Node> assertions;
+    getAssertions(as, assertions);
+    proof::LfscNodeConverter ltp;
+    proof::LfscProofPostprocess lpp(ltp, d_pnm.get());
+    lpp.process(fp);
+    proof::LfscPrinter lp(ltp, d_rewriteDb.get());
+    lp.print(out, assertions, fp.get());
+  }
+  else if (options().proof.proofFormatMode == options::ProofFormatMode::TPTP)
   {
     out << "% SZS output start Proof for " << options().driver.filename
         << std::endl;
@@ -266,7 +292,10 @@ ProofChecker* PfManager::getProofChecker() const { return d_pchecker.get(); }
 
 ProofNodeManager* PfManager::getProofNodeManager() const { return d_pnm.get(); }
 
-rewriter::RewriteDb* PfManager::getRewriteDatabase() const { return nullptr; }
+rewriter::RewriteDb* PfManager::getRewriteDatabase() const
+{
+  return d_rewriteDb.get();
+}
 
 smt::PreprocessProofGenerator* PfManager::getPreprocessProofGenerator() const
 {
@@ -284,12 +313,12 @@ std::shared_ptr<ProofNode> PfManager::getFinalProof(
 void PfManager::getAssertions(Assertions& as,
                               std::vector<Node>& assertions)
 {
-  context::CDList<Node>* al = as.getAssertionList();
-  Assert(al != nullptr);
-  for (context::CDList<Node>::const_iterator i = al->begin(); i != al->end();
-       ++i)
+  const context::CDList<Node>& al = as.getAssertionList();
+  Assert(options().smt.produceAssertions)
+      << "Expected produce assertions to be true when checking proof";
+  for (const Node& a : al)
   {
-    assertions.push_back(*i);
+    assertions.push_back(a);
   }
 }
 
