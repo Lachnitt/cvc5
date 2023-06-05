@@ -15,6 +15,7 @@
 
 #include "prop/proof_cnf_stream.h"
 
+#include "expr/skolem_manager.h"
 #include "options/smt_options.h"
 #include "prop/minisat/minisat.h"
 #include "theory/builtin/proof_checker.h"
@@ -30,6 +31,8 @@ ProofCnfStream::ProofCnfStream(Env& env,
       d_cnfStream(cnfStream),
       d_inputClauses(userContext()),
       d_lemmaClauses(userContext()),
+      d_inputClauseNodes(userContext()),
+      d_lemmaClauseNodes(userContext()),
       d_satPM(satPM),
       // Since the ProofCnfStream performs no equality reasoning, there is no
       // need to automatically add symmetry steps. Note that it is *safer* to
@@ -104,6 +107,24 @@ std::vector<std::shared_ptr<ProofNode>> ProofCnfStream::getLemmaClausesProofs()
   return pfs;
 }
 
+std::vector<std::vector<Node>> ProofCnfStream::getInputClauseNodes()
+{
+  std::vector<std::vector<Node>> icn;
+  for(const auto a : d_inputClauseNodes){
+    icn.push_back(a);
+  } 
+  return icn;
+}
+
+std::vector<std::vector<Node>> ProofCnfStream::getLemmaClauseNodes()
+{
+  std::vector<std::vector<Node>> icn;
+  for(const auto a : d_lemmaClauseNodes){
+    icn.push_back(a);
+  } 
+  return icn;
+}
+
 std::shared_ptr<ProofNode> ProofCnfStream::getProofFor(Node f)
 {
   return d_proof.getProofFor(f);
@@ -118,6 +139,20 @@ std::string ProofCnfStream::identify() const { return "ProofCnfStream"; }
 
 Node ProofCnfStream::normalizeAndRegister(TNode clauseNode)
 {
+ // we do this here because I have the guarantee this node indeed corresponds
+  // to a clause
+  if (d_input)
+  {
+    Node clauseNodePersistent = SkolemManager::getOriginalForm(clauseNode);
+    d_inputClauseNodes.push_back(
+        {clauseNodePersistent.begin(), clauseNodePersistent.end()});
+  }
+  else
+  {
+    Node clauseNodePersistent = SkolemManager::getOriginalForm(clauseNode);
+    d_lemmaClauseNodes.push_back(
+        {clauseNodePersistent.begin(), clauseNodePersistent.end()});
+  }
   Node normClauseNode = d_psb.factorReorderElimDoubleNeg(clauseNode);
   if (TraceIsOn("cnf") && normClauseNode != clauseNode)
   {
@@ -234,10 +269,12 @@ void ProofCnfStream::convertAndAssert(TNode node, bool negated)
         if (d_input)
         {
           d_inputClauses.insert(nnode);
+          d_inputClauseNodes.push_back({SkolemManager::getOriginalForm(nnode)});
         }
         else
         {
           d_lemmaClauses.insert(nnode);
+          d_lemmaClauseNodes.push_back({SkolemManager::getOriginalForm(nnode)});
         }
       }
     }

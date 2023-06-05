@@ -237,6 +237,8 @@ libcvc5_add_sources(
   prop/cnf_stream.h
   prop/cryptominisat.cpp
   prop/cryptominisat.h
+  prop/dratT_proof_manager.cpp
+  prop/dratT_proof_manager.h
   prop/kissat.cpp
   prop/kissat.h
   prop/learned_db.cpp

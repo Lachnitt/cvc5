@@ -273,6 +273,7 @@ void PfManager::printProof(std::ostream& out,
     out << "% SZS output end Proof for " << options().driver.filename
         << std::endl;
   }
+  else if (mode == options::ProofFormatMode::DRATT) {}
   else
   {
     // otherwise, print using default printer

@@ -27,6 +27,9 @@ name   = "Proof"
 [[option.mode.TPTP]]
   name       = "tptp"
   help       = "Output TPTP proof (work in progress)"
+[[option.mode.DRATT]]
+  name       = "dratT"
+  help       = "Output proof in the drat(T) proof format"
 
 [[option]]
   name       = "proofPrintConclusion"

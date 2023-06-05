@@ -144,6 +144,12 @@ class ProofCnfStream : protected EnvObj, public ProofGenerator
   /** Retrieve the clauses derived from lemmas */
   std::vector<Node> getLemmaClauses();
 
+  /** Retrieve the clauses derived from the input, as node vectors. */
+  std::vector<std::vector<Node>> getInputClauseNodes();
+  /** Retrieve the clauses derived from lemmas, as node vectors. They'll be in
+   * their original forms (no skolems). */
+  std::vector<std::vector<Node>> getLemmaClauseNodes();
+
  private:
   /**
    * Same as above, except that uses the saved d_removable flag. It calls the
@@ -212,6 +218,11 @@ class ProofCnfStream : protected EnvObj, public ProofGenerator
   context::CDHashSet<Node> d_inputClauses;
   /** Asserted clauses derived from lemmas */
   context::CDHashSet<Node> d_lemmaClauses;
+
+  /** Asserted clauses (as node vectors) derived from the input */
+  context::CDList<std::vector<Node>> d_inputClauseNodes;
+  /** Asserted clauses (as node vectors) derived from lemmas */
+  context::CDList<std::vector<Node>> d_lemmaClauseNodes;
 
   /** The proof manager of underlying SAT solver associated with this stream. */
   SatProofManager* d_satPM;

@@ -19,6 +19,8 @@
 #include <map>
 #include <utility>
 
+#include "prop/proof_cnf_stream.h"
+
 #include "base/check.h"
 #include "base/output.h"
 #include "expr/skolem_manager.h"
@@ -30,6 +32,7 @@
 #include "options/smt_options.h"
 #include "proof/proof_node_algorithm.h"
 #include "prop/cnf_stream.h"
+#include "prop/dratT_proof_manager.h"
 #include "prop/minisat/minisat.h"
 #include "prop/prop_proof_manager.h"
 #include "prop/sat_solver.h"
@@ -40,6 +43,8 @@
 #include "theory/theory_engine.h"
 #include "util/resource_manager.h"
 #include "util/result.h"
+
+//#include "prop/proof_cnf_stream.cpp"
 
 namespace cvc5::internal {
 namespace prop {
@@ -698,6 +703,11 @@ ProofCnfStream* PropEngine::getProofCnfStream() { return d_pfCnfStream.get(); }
 
 std::shared_ptr<ProofNode> PropEngine::getProof(bool connectCnf)
 {
+  if(d_env.getOptions().proof.proofFormatMode == options::ProofFormatMode::DRATT)
+  {
+    DratTProofManager *dpm = new DratTProofManager(d_pfCnfStream->getInputClauseNodes(),d_pfCnfStream->getLemmaClauseNodes());
+    dpm->printDratTProof();
+  }
   if (!d_env.isSatProofProducing())
   {
     return nullptr;
