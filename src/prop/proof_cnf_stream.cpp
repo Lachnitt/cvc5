@@ -121,7 +121,8 @@ std::string ProofCnfStream::identify() const { return "ProofCnfStream"; }
 
 Node ProofCnfStream::normalizeAndRegister(TNode clauseNode)
 {
-  // we do this here because I have the guarantee this node indeed corresponds to a clause
+  // we do this here because I have the guarantee this node indeed corresponds
+  // to a clause
   if (d_input)
   {
     Node clauseNodePersistent = SkolemManager::getOriginalForm(clauseNode);
@@ -131,7 +132,8 @@ Node ProofCnfStream::normalizeAndRegister(TNode clauseNode)
   else
   {
     Node clauseNodePersistent = SkolemManager::getOriginalForm(clauseNode);
-    d_lemmaClauseNodes.push_back({clauseNodePersistent.begin(), clauseNodePersistent.end()});
+    d_lemmaClauseNodes.push_back(
+        {clauseNodePersistent.begin(), clauseNodePersistent.end()});
   }
   Node normClauseNode = d_psb.factorReorderElimDoubleNeg(clauseNode);
   if (TraceIsOn("cnf") && normClauseNode != clauseNode)
