@@ -17,6 +17,8 @@
 
 #include "prop/cadical.h"
 
+#include <filesystem>
+
 #include "base/check.h"
 #include "util/resource_manager.h"
 #include "util/statistics_registry.h"
@@ -79,7 +81,7 @@ void CadicalSolver::init()
   d_solver->add(0);
 }
 
-CadicalSolver::~CadicalSolver() {}
+CadicalSolver::~CadicalSolver() { deleteDratFile(); }
 
 /**
  * Terminator class that notifies CaDiCaL to terminate when the resource limit
@@ -201,6 +203,33 @@ uint32_t CadicalSolver::getAssertionLevel() const
 }
 
 bool CadicalSolver::ok() const { return d_inSatMode; }
+
+void CadicalSolver::setDrat()
+{
+  std::ostringstream filePathStringStream;
+  filePathStringStream << "dratProof_" << getpid() << ".drat";
+  d_tempDratFilePath = filePathStringStream.str();
+  d_dratFile = fopen(d_tempDratFilePath.c_str(), "wb");
+  // Currently only non-binary proofs are supported
+  d_solver->set_long_option("--no-binary");
+  d_solver->trace_proof(d_dratFile, d_tempDratFilePath.c_str());
+}
+
+std::ifstream CadicalSolver::getDrat()
+{
+  fclose(d_dratFile);
+  d_solver->close_proof_trace();
+  std::ifstream dratFile(d_tempDratFilePath, std::ios::binary);
+  return dratFile;
+}
+
+void CadicalSolver::deleteDratFile()
+{
+  if (!d_tempDratFilePath.empty())
+  {
+    std::filesystem::remove(d_tempDratFilePath.c_str());
+  }
+}
 
 CadicalSolver::Statistics::Statistics(StatisticsRegistry& registry,
                                       const std::string& prefix)

@@ -21,11 +21,14 @@
 #include <unordered_map>
 
 #include "context/cdqueue.h"
+#include "proof/drat/drat_proof.h"
 #include "proof/eager_proof_generator.h"
 #include "prop/cnf_stream.h"
+#include "prop/proof_cnf_stream.h"
 #include "prop/sat_solver.h"
 #include "smt/env_obj.h"
 #include "theory/bv/bitblast/node_bitblaster.h"
+#include "theory/bv/bitblast/proof_bitblaster.h"
 #include "theory/bv/bv_solver.h"
 #include "theory/bv/proof_checker.h"
 
@@ -89,8 +92,27 @@ class BVSolverBitblast : public BVSolver
    */
   void handleEagerAtom(TNode fact, bool assertFact);
 
+  /** Bitblast and converts atoms to CNF. */
+  void handleLazyAtom(TNode fact);
+
+  Node bitblastAtom(TNode fact);
+
+  /** Raises conflict building proofs if necessary */
+  void raiseConflict(const Node& conflict);
+
+  /** Converts DRAT proof in terms of SAT literals to the corresponding Node
+   * literals.
+   *
+   * The result is a Node vector where each Node is an s-expression with a
+   * marker of whether it's a clause being added or deleted followed by the
+   * Node-level literals.
+   */
+  std::vector<Node> convertDratProof(const proof::DratProof& dratProof) const;
+
   /** Bit-blaster used to bit-blast atoms/terms. */
   std::unique_ptr<NodeBitblaster> d_bitblaster;
+  /** Proof Bit-blaster. */
+  std::unique_ptr<BBProof> d_pfBitblaster;
 
   /** Used for initializing `d_cnfStream`. */
   std::unique_ptr<BBRegistrar> d_bbRegistrar;
@@ -100,6 +122,8 @@ class BVSolverBitblast : public BVSolver
   std::unique_ptr<prop::SatSolver> d_satSolver;
   /** CNF stream. */
   std::unique_ptr<prop::CnfStream> d_cnfStream;
+  /** Proof CNF stream. */
+  std::unique_ptr<prop::ProofCnfStream> d_pfCnfStream;
 
   /**
    * Bit-blast queue for facts sent to this solver.

@@ -49,9 +49,14 @@ SatSolver* SatSolverFactory::createCryptoMinisat(StatisticsRegistry& registry,
 
 SatSolver* SatSolverFactory::createCadical(StatisticsRegistry& registry,
                                            ResourceManager* resmgr,
-                                           const std::string& name)
+                                           const std::string& name,
+                                           bool produceProofs)
 {
   CadicalSolver* res = new CadicalSolver(registry, name);
+  if (produceProofs)
+  {
+    res->setDrat();
+  }
   res->init();
   res->setResourceLimit(resmgr);
   return res;

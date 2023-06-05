@@ -114,6 +114,22 @@ public:
     Unimplemented() << "getUnsatAssumptions not implemented";
   }
 
+  /**
+   * Enables the production of a DRAT proof by this SAT solver.
+   */
+  virtual void setDrat() { Unimplemented() << "setDrat not implemented"; }
+
+  /**
+   * Returns the DRAT proof produced by this SAT solver.
+   *
+   * The production of the DRAT proof must have been enabled (via setDrat), and
+   * this method must be called after the solving has finished.
+   */
+  virtual std::ifstream getDrat()
+  {
+    Unimplemented() << "getDrat not implemented";
+  }
+
 };/* class SatSolver */
 
 class CDCLTSatSolver : public SatSolver

@@ -60,6 +60,10 @@ class CadicalSolver : public SatSolver
 
   bool ok() const override;
 
+  void setDrat() override;
+
+  std::ifstream getDrat() override;
+
  private:
   /**
    * Private to disallow creation outside of SatSolverFactory.
@@ -71,6 +75,10 @@ class CadicalSolver : public SatSolver
    * Note: Split out to not call virtual functions in constructor.
    */
   void init();
+  /**
+   * Deletes the generated DRAT proof file.
+   */
+  void deleteDratFile();
 
   /**
    * Set resource limit.
@@ -90,6 +98,8 @@ class CadicalSolver : public SatSolver
   bool d_inSatMode;
   SatVariable d_true;
   SatVariable d_false;
+  FILE* d_dratFile;
+  std::string d_tempDratFilePath;
 
   struct Statistics
   {

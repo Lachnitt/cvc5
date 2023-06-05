@@ -832,6 +832,11 @@ bool ProofCnfStream::hasLiteral(TNode n) const
   return d_cnfStream.hasLiteral(n);
 }
 
+bool ProofCnfStream::hasLiteral(const SatLiteral& literal) const
+{
+  return d_cnfStream.hasLiteral(literal);
+}
+
 SatLiteral ProofCnfStream::getLiteral(TNode node)
 {
   return d_cnfStream.getLiteral(node);
@@ -841,6 +846,11 @@ void ProofCnfStream::getBooleanVariables(
     std::vector<TNode>& outputVariables) const
 {
   d_cnfStream.getBooleanVariables(outputVariables);
+}
+
+TNode ProofCnfStream::getNode(const SatLiteral& literal)
+{
+  return d_cnfStream.getNode(literal);
 }
 
 SatLiteral ProofCnfStream::toCNF(TNode node, bool negated)
