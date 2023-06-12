@@ -46,8 +46,14 @@ void DratTProofManager::printDratTProof(){
   for (std::vector<Node> icn : d_inputClauseNodes) {
     SatClause cl;
     assumptions << "i ";
+    if (icn.size() == 1 && icn[0] == NodeManager::currentNM()->mkConst(false)) {
+       assumptions << "0" << std::endl;
+       cl.push_back(cnf.toCNF(icn[0]));
+       cadical->addClause(cl,false);
+       break;
+     }
     for (Node n : icn){
-      SatLiteral sl = cnf.toCNF(n,false);
+      SatLiteral sl = cnf.convertAtom(n);
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -64,11 +70,7 @@ void DratTProofManager::printDratTProof(){
     SatClause cl;
     lemmas << "t ";
     for (Node n : icn){
-      //cnf.ensureLiteral(n);
-
-      cnf.ensureLiteral(n);
-      //SatLiteral sl = cnf.toCNF(n,isNegated(n));
-      SatLiteral sl = cnf.getLiteral(n);
+      SatLiteral sl = cnf.convertAtom(n);
       cl.push_back(sl);
       if(sl.isNegated()) {
         lemmas << "-" << sl.getSatVariable() << " ";
