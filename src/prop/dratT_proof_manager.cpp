@@ -47,11 +47,7 @@ void DratTProofManager::printDratTProof(){
     SatClause cl;
     assumptions << "i ";
     for (Node n : icn){
-      std::cout << "input n " << n << " isNegated " << isNegated(n) << std::endl;
-      //cnf.ensureLiteral(n);
       SatLiteral sl = cnf.toCNF(n,false);
-      //SatLiteral sl = cnf.getLiteral(n);
-      std::cout << "sl " << sl << std::endl;
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -62,7 +58,6 @@ void DratTProofManager::printDratTProof(){
     }
     cadical->addClause(cl,false);
     assumptions << "0" << std::endl;
-    std::cout << "cl " << cl << std::endl;
   }
   std::stringstream lemmas;
   for (std::vector<Node> icn : d_lemmaClauseNodes) {
@@ -71,7 +66,6 @@ void DratTProofManager::printDratTProof(){
     for (Node n : icn){
       //cnf.ensureLiteral(n);
 
-      std::cout << "theory n " << n << " isNegated " << isNegated(n) << std::endl;
       cnf.ensureLiteral(n);
       //SatLiteral sl = cnf.toCNF(n,isNegated(n));
       SatLiteral sl = cnf.getLiteral(n);
@@ -87,7 +81,6 @@ void DratTProofManager::printDratTProof(){
     lemmas << "0" << std::endl;
   }
 
-std::cout << "debug3 " << std::endl;
   cadical->solve();
   std::ifstream is = cadical->getDrat();
 
