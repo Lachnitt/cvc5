@@ -33,8 +33,6 @@ class DratTProofManager
   /** Asserted clauses (as node vectors) derived from lemmas */
   std::vector<std::vector<Node>> d_lemmaClauseNodes;
 
-  //Will be replaced by d_cnfStream
-  ProofCnfStream* d_pfCnfStream;
   /** The CNF converter in use */
   CnfStream* d_cnfStream;
 

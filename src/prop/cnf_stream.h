@@ -34,6 +34,7 @@
 #include "prop/sat_solver_types.h"
 #include "smt/env_obj.h"
 #include "util/statistics_stats.h"
+#include "prop/dratT_proof_manager.h"
 
 namespace cvc5::internal {
 
@@ -44,6 +45,7 @@ namespace prop {
 class ProofCnfStream;
 class PropEngine;
 class SatSolver;
+
 
 /** A policy for how literals for formulas are handled in cnf_stream */
 enum class FormulaLitPolicy : uint32_t
@@ -71,6 +73,7 @@ class CnfStream : protected EnvObj
 {
   friend PropEngine;
   friend ProofCnfStream;
+  friend DratTProofManager;
 
  public:
   /** Cache of what nodes have been registered to a literal. */

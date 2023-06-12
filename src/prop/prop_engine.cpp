@@ -706,6 +706,7 @@ std::shared_ptr<ProofNode> PropEngine::getProof(bool connectCnf)
   if(d_env.getOptions().proof.proofFormatMode == options::ProofFormatMode::DRATT)
   {
     DratTProofManager *dpm = new DratTProofManager(d_pfCnfStream->getInputClauseNodes(),d_pfCnfStream->getLemmaClauseNodes());
+
     dpm->printDratTProof();
   }
   if (!d_env.isSatProofProducing())

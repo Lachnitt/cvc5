@@ -110,8 +110,8 @@ std::vector<std::shared_ptr<ProofNode>> ProofCnfStream::getLemmaClausesProofs()
 std::vector<std::vector<Node>> ProofCnfStream::getInputClauseNodes()
 {
   std::vector<std::vector<Node>> icn;
-  for(const auto a : d_inputClauseNodes){
-    icn.push_back(a);
+  for(const std::vector<Node> nv : d_inputClauseNodes){
+    icn.push_back(nv);
   } 
   return icn;
 }
