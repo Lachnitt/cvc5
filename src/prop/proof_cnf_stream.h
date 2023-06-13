@@ -197,9 +197,10 @@ class ProofCnfStream : protected EnvObj, public ProofGenerator
    * above normalizations on all added clauses.
    *
    * @param clauseNode The clause node to be normalized.
+   * @param clause The clause corresponding to clauseNode.
    * @return The normalized clause node.
    */
-  Node normalizeAndRegister(TNode clauseNode);
+  Node normalizeAndRegister(TNode clauseNode, const SatClause& clause);
 
   /** Gets node equivalent to SAT clause.
    *
