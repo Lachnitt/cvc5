@@ -87,6 +87,27 @@ std::vector<Node> ProofCnfStream::getLemmaClauses()
   return cls;
 }
 
+std::vector<std::vector<Node>> ProofCnfStream::getInputClauseNodes()
+{
+  std::vector<std::vector<Node>> cls;
+  for (const std::vector<Node>& cl : d_inputClauseNodes)
+  {
+    cls.push_back(cl);
+  }
+  return cls;
+}
+
+std::vector<std::vector<Node>> ProofCnfStream::getLemmaClauseNodes()
+{
+  std::vector<std::vector<Node>> cls;
+  for (const std::vector<Node>& cl : d_lemmaClauseNodes)
+  {
+    cls.push_back(cl);
+  }
+  return cls;
+}
+
+
 std::vector<std::shared_ptr<ProofNode>> ProofCnfStream::getInputClausesProofs()
 {
   std::vector<std::shared_ptr<ProofNode>> pfs;
