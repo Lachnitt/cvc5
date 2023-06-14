@@ -23,6 +23,9 @@ bool isNegated(Node n){
 }
 
 void DratTProofManager::printDratTProof(){
+  //stream to write to
+  std::stringstream out;
+
   //Print declare-sort and declare-fun
   printPreamble(); 
 
@@ -53,9 +56,9 @@ void DratTProofManager::printDratTProof(){
        break;
      }*/
     for (Node n : icn){
-      std::cout << "n " << n << std::endl;
+      out << "n " << n << std::endl;
       SatLiteral sl = ((n[1] == NodeManager::currentNM()->mkConst(true)) ? cnf.convertAtom(n[0]) : cnf.convertAtom(n[0][0]));
-      std::cout << "sl " << sl << std::endl;
+      out << "sl " << sl << std::endl;
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -93,26 +96,27 @@ void DratTProofManager::printDratTProof(){
   //Print mapping
   for (auto litNode : ltnm) {
     if(!litNode.first.isNegated()) {
-      std::cout << "(define-fun " << litNode.first.toString() << " () Bool " << litNode.second << ")" << std::endl;
+      out << "(define-fun " << litNode.first.toString() << " () Bool " << litNode.second << ")" << std::endl;
     }
   }
   //Print DIMACS
   //TODO: The literals don't start at 1 which leads to problems with DRAT_trim if p cnf line is not adapted.
   int varNr = ltnm.size() / 2;
-  std::cout << "p cnf " << (varNr + 2)<< " " << d_inputClauseNodes.size() << std::endl;
-  std::cout << assumptions.str();
-  std::cout << lemmas.str();
+  out << "p cnf " << (varNr + 2)<< " " << d_inputClauseNodes.size() << std::endl;
+  out << assumptions.str();
+  out << lemmas.str();
 
   //Print DRAT proof
   //TODO: Might need special handling if input is empty
-  std::cout << is.rdbuf();
+  out << is.rdbuf();
 }
 
 
 //This is similar to LeanPrinter::printSortsAndConstants
-void DratTProofManager::printPreamble()
+std::stringstream DratTProofManager::printPreamble()
 {
-  std::cout << "(set-logic ALL)" << std::endl;
+  std::stringstream out;
+  out << "(set-logic ALL)" << std::endl;
   std::unordered_set<Node> syms;
   std::unordered_set<TNode> visited;
 
@@ -152,7 +156,7 @@ void DratTProofManager::printPreamble()
         sts.insert(stc);
         //declare new sort
         //TODO: Won't work with assertions on
-        std::cout << "(declare-sort " << stc << " " << stc.getUninterpretedSortConstructorArity() << ")" << std::endl;
+        out << "(declare-sort " << stc << " " << stc.getUninterpretedSortConstructorArity() << ")" << std::endl;
       }
     }
   }
@@ -166,15 +170,15 @@ void DratTProofManager::printPreamble()
     {
       continue;
     }
-    std::cout << "(declare-fun " << s << " (";
+    out << "(declare-fun " << s << " (";
     if(s.getNumChildren() == 0) {
-     std::cout << ") " << st << ")" << std::endl;
+     out << ") " << st << ")" << std::endl;
     }
     else {
       for(auto i = st.begin(), size = st.end()-1; i != size; i++) {
-        std::cout << *i << ((i != size - 1)? " " : "");
+        out << *i << ((i != size - 1)? " " : "");
       }
-      std::cout << ") " << *(st.end()-1) << ")" << std::endl;
+      out << ") " << *(st.end()-1) << ")" << std::endl;
     }
   }
 

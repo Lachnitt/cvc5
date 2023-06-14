@@ -26,7 +26,7 @@ class DratTProofManager
 
   private:
 
-  void printPreamble();
+  std::stringstream printPreamble();
 
   /** Asserted clauses (as node vectors) derived from the input */
   std::vector<std::vector<Node>> d_inputClauseNodes;
