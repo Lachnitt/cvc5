@@ -28,7 +28,7 @@ void DratTProofManager::printDratTProof(){
 
   //Print declare-sort and declare-fun
   printPreamble(); 
-
+  std::cout << "debug1" << std::endl;
   //Call Cadical
   Options* opts = new Options();
   Env env(opts);
@@ -45,10 +45,12 @@ void DratTProofManager::printDratTProof(){
   const context::CDInsertHashMap<SatLiteral, NodeTemplate<false>, SatLiteralHashFunction> &ltnm = cnf.getNodeCache();
   const CnfStream::NodeToLiteralMap &ltnm2 = cnf.getTranslationCache();
 
+  std::cout << "debug2" << std::endl;
   std::stringstream assumptions;
   for (std::vector<Node> icn : d_inputClauseNodes) {
     SatClause cl;
     assumptions << "i ";
+  std::cout << "debug2b " << icn << std::endl;
     /*if (icn.size() == 1 && icn[0] == NodeManager::currentNM()->mkConst(false)) {
        assumptions << "0" << std::endl;
        cl.push_back(cnf.toCNF(icn[0]));
@@ -56,9 +58,14 @@ void DratTProofManager::printDratTProof(){
        break;
      }*/
     for (Node n : icn){
-      out << "n " << n << std::endl;
-      SatLiteral sl = ((n[1] == NodeManager::currentNM()->mkConst(true)) ? cnf.convertAtom(n[0]) : cnf.convertAtom(n[0][0]));
-      out << "sl " << sl << std::endl;
+      std::cout << "n " << n << std::endl;
+      SatLiteral sl =
+	 ((n[1] == NodeManager::currentNM()->mkConst(true))
+	 ?
+          (cnf.hasLiteral(n[0]) ? cnf.getLiteral(n[0]) : cnf.convertAtom(n[0]))
+         :
+	  (cnf.hasLiteral(n[0][0]) ? cnf.getLiteral(n[0][0]) : cnf.convertAtom(n[0][0])));
+      std::cout << "sl " << sl << std::endl;
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -70,13 +77,22 @@ void DratTProofManager::printDratTProof(){
     cadical->addClause(cl,false);
     assumptions << "0" << std::endl;
   }
+  std::cout << "debug3" << std::endl;
   std::stringstream lemmas;
   for (std::vector<Node> icn : d_lemmaClauseNodes) {
     SatClause cl;
     lemmas << "t ";
+  std::cout << "debug4" << std::endl;
     for (Node n : icn){
-//      SatLiteral sl = cnf.convertAtom(n);
-      SatLiteral sl = ((n[1] == NodeManager::currentNM()->mkConst(true)) ? cnf.convertAtom(n[0]) : cnf.convertAtom(n[0][0]));
+      std::cout << "n " << n << std::endl;
+      SatLiteral sl =
+	 ((n[1] == NodeManager::currentNM()->mkConst(true))
+	 ?
+          (cnf.hasLiteral(n[0]) ? cnf.getLiteral(n[0]) : cnf.convertAtom(n[0]))
+         :
+	  (cnf.hasLiteral(n[0][0]) ? cnf.getLiteral(n[0][0]) : cnf.convertAtom(n[0][0])));
+
+  std::cout << "debug5" << std::endl;
 
       cl.push_back(sl);
       if(sl.isNegated()) {
@@ -90,6 +106,7 @@ void DratTProofManager::printDratTProof(){
     lemmas << "0" << std::endl;
   }
 
+  std::cout << "debug6" << std::endl;
   cadical->solve();
   std::ifstream is = cadical->getDrat();
 
@@ -156,7 +173,7 @@ std::stringstream DratTProofManager::printPreamble()
         sts.insert(stc);
         //declare new sort
         //TODO: Won't work with assertions on
-        out << "(declare-sort " << stc << " " << stc.getUninterpretedSortConstructorArity() << ")" << std::endl;
+        out << "(declare-sort " << stc << " " << std::endl; //stc.getUninterpretedSortConstructorArity() << ")" << std::endl;
       }
     }
   }
@@ -181,8 +198,8 @@ std::stringstream DratTProofManager::printPreamble()
       out << ") " << *(st.end()-1) << ")" << std::endl;
     }
   }
-
-  
+ std::cout << "preamble test print " << out.rdbuf() << std::endl;
+ return out; 
 
 }
 
