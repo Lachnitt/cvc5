@@ -46,14 +46,16 @@ void DratTProofManager::printDratTProof(){
   for (std::vector<Node> icn : d_inputClauseNodes) {
     SatClause cl;
     assumptions << "i ";
-    if (icn.size() == 1 && icn[0] == NodeManager::currentNM()->mkConst(false)) {
+    /*if (icn.size() == 1 && icn[0] == NodeManager::currentNM()->mkConst(false)) {
        assumptions << "0" << std::endl;
        cl.push_back(cnf.toCNF(icn[0]));
        cadical->addClause(cl,false);
        break;
-     }
+     }*/
     for (Node n : icn){
-      SatLiteral sl = cnf.convertAtom(n);
+      std::cout << "n " << n << std::endl;
+      SatLiteral sl = ((n[1] == NodeManager::currentNM()->mkConst(true)) ? cnf.convertAtom(n[0]) : cnf.convertAtom(n[0][0]));
+      std::cout << "sl " << sl << std::endl;
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -70,7 +72,9 @@ void DratTProofManager::printDratTProof(){
     SatClause cl;
     lemmas << "t ";
     for (Node n : icn){
-      SatLiteral sl = cnf.convertAtom(n);
+//      SatLiteral sl = cnf.convertAtom(n);
+      SatLiteral sl = ((n[1] == NodeManager::currentNM()->mkConst(true)) ? cnf.convertAtom(n[0]) : cnf.convertAtom(n[0][0]));
+
       cl.push_back(sl);
       if(sl.isNegated()) {
         lemmas << "-" << sl.getSatVariable() << " ";
@@ -92,7 +96,6 @@ void DratTProofManager::printDratTProof(){
       std::cout << "(define-fun " << litNode.first.toString() << " () Bool " << litNode.second << ")" << std::endl;
     }
   }
-
   //Print DIMACS
   //TODO: The literals don't start at 1 which leads to problems with DRAT_trim if p cnf line is not adapted.
   int varNr = ltnm.size() / 2;
@@ -117,7 +120,7 @@ void DratTProofManager::printPreamble()
   {
    for (const Node c: n)
    {
-    expr::getSymbols(c, syms, visited);
+    expr::getSymbols(c[0], syms, visited);
    }
   }
 
@@ -125,45 +128,57 @@ void DratTProofManager::printPreamble()
   {
    for (const Node c: n)
    {
-    expr::getSymbols(c, syms, visited);
+    expr::getSymbols(c[0], syms, visited);
    }
   }
 
   std::unordered_set<TypeNode> sts;
-  for (Node s : syms)
+  NodeManager* nm = NodeManager::currentNM();
+  for (const Node& s : syms)
   {
     TypeNode st = s.getType();
-    if (st.isUninterpretedSort() && sts.find(st) == sts.end())
+    std::unordered_set<TypeNode> ctypes;
+    expr::getComponentTypes(st,ctypes);
+    for (const TypeNode& stc : ctypes)
     {
-      //declare new sort
-      sts.insert(st);
-      std::cout << "(declare-sort " << st << " " << st.getUninterpretedSortConstructorArity() << ")" << std::endl;
-    }
-    if (st.getNumChildren() != 0)
-    {
-      for(auto i = st.begin(), size = st.end()-1; i != size; i++) {
-        if ((*i).isUninterpretedSort() && sts.find(*i) == sts.end())
-        {
-          //declare new sort
-          sts.insert(*i);
-          std::cout << "(declare-sort " << *i << " " << (*i).getUninterpretedSortConstructorArity() << ")" << std::endl;
-        } 
+      // ignore expression type, should not appear though
+      if (stc == nm->sExprType())
+      {
+        continue;
       }
-
+       // only collect non-predefined sorts for declaration
+      if (stc.isUninterpretedSort() && stc.getKind() != kind::TYPE_CONSTANT && sts.find(stc) == sts.end())
+      {
+        sts.insert(stc);
+        //declare new sort
+        //TODO: Won't work with assertions on
+        std::cout << "(declare-sort " << stc << " " << stc.getUninterpretedSortConstructorArity() << ")" << std::endl;
+      }
     }
+  }
 
-
-    if(st.getNumChildren() == 0) {
-      std::cout << "(declare-fun " << s << " () " << st << ")" << std::endl;
+  //uninterpreted functions
+  for (const Node& s :syms)
+  {
+    TypeNode st = s.getType();
+    // ignore symbolic stuff
+    if (st == nm->sExprType())
+    {
+      continue;
+    }
+    std::cout << "(declare-fun " << s << " (";
+    if(s.getNumChildren() == 0) {
+     std::cout << ") " << st << ")" << std::endl;
     }
     else {
-      std::cout << "(declare-fun " << s << " (";
       for(auto i = st.begin(), size = st.end()-1; i != size; i++) {
         std::cout << *i << ((i != size - 1)? " " : "");
       }
       std::cout << ") " << *(st.end()-1) << ")" << std::endl;
     }
   }
+
+  
 
 }
 
