@@ -152,6 +152,8 @@ Node ProofCnfStream::normalizeAndRegister(TNode clauseNode, const SatClause& cla
   Node trueNode = nm->mkConst(true), falseNode = nm->mkConst(false);
   for (size_t i = 0, size = clause.size(); i < size; ++i)
   {
+    std::cout << "clause[i] " << clause[i] << " clauseNodePersistent[i] " 
+    << clauseNodePersistent[i] << std::endl;
     Assert(!clause[i].isNegated() || clauseNodePersistent[i].getKind() == kind::NOT);
     newClNodes.push_back(nm->mkNode(kind::SEXPR,
                                     clauseNodePersistent[i],
@@ -1027,11 +1029,13 @@ SatLiteral ProofCnfStream::handleOr(TNode node)
   added = d_cnfStream.assertClause(node.negate(), clause);
   if (added)
   {
-    std::vector<Node> disjuncts{node.notNode()};
+    std::vector<Node> disjuncts;
     for (unsigned i = 0; i < size; ++i)
     {
+      std::cout << "node[i] " << node[i] << std::endl;
       disjuncts.push_back(node[i]);
     }
+    disjuncts.push_back(node.notNode());
     Node clauseNode = nm->mkNode(kind::OR, disjuncts);
     d_proof.addStep(clauseNode, PfRule::CNF_OR_POS, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleOr: CNF_OR_POS added " << clauseNode

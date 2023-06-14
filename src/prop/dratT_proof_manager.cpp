@@ -18,17 +18,18 @@ DratTProofManager::DratTProofManager(std::vector<std::vector<Node>> inputClauseN
   
 }
 
-bool isNegated(Node n){
-  return ((n.getNumChildren()==1 && n.getKind() == kind::NOT)?(!isNegated(n[0])):0);
+Node removeDoubleNegation(Node n){
+  if(n.getKind() != kind::NOT || n.getNumChildren() != 1) {return n;}
+  if(n[0].getKind() != kind::NOT) {return n;}
+  return n[0][0];
 }
 
 void DratTProofManager::printDratTProof(){
   //stream to write to
   std::stringstream out;
-
+  std::cout << "debug" << std::endl;
   //Print declare-sort and declare-fun
   printPreamble(); 
-  std::cout << "debug1" << std::endl;
   //Call Cadical
   Options* opts = new Options();
   Env env(opts);
@@ -45,12 +46,10 @@ void DratTProofManager::printDratTProof(){
   const context::CDInsertHashMap<SatLiteral, NodeTemplate<false>, SatLiteralHashFunction> &ltnm = cnf.getNodeCache();
   const CnfStream::NodeToLiteralMap &ltnm2 = cnf.getTranslationCache();
 
-  std::cout << "debug2" << std::endl;
   std::stringstream assumptions;
   for (std::vector<Node> icn : d_inputClauseNodes) {
     SatClause cl;
     assumptions << "i ";
-  std::cout << "debug2b " << icn << std::endl;
     /*if (icn.size() == 1 && icn[0] == NodeManager::currentNM()->mkConst(false)) {
        assumptions << "0" << std::endl;
        cl.push_back(cnf.toCNF(icn[0]));
@@ -58,14 +57,22 @@ void DratTProofManager::printDratTProof(){
        break;
      }*/
     for (Node n : icn){
-      std::cout << "n " << n << std::endl;
-      SatLiteral sl =
-	 ((n[1] == NodeManager::currentNM()->mkConst(true))
-	 ?
-          (cnf.hasLiteral(n[0]) ? cnf.getLiteral(n[0]) : cnf.convertAtom(n[0]))
-         :
-	  (cnf.hasLiteral(n[0][0]) ? cnf.getLiteral(n[0][0]) : cnf.convertAtom(n[0][0])));
-      std::cout << "sl " << sl << std::endl;
+      std::cout << n << std::endl;
+      Node n2 = (n[1] == NodeManager::currentNM()->mkConst(true)) ? n[0] : n[0][0];
+        std::cout << "1. n2 " << n2 << std::endl;
+      SatLiteral sl;
+      if (cnf.hasLiteral(n2)) {
+        sl = cnf.getLiteral(n2); }
+      else {
+        std::cout << "n2 " << n2 << std::endl;
+        Node n3 = removeDoubleNegation(n2);
+        std::cout << "n2 " << n2 << std::endl;
+        if (cnf.hasLiteral(n3)) {
+          sl = cnf.getLiteral(n3); }
+        else {
+          sl = cnf.convertAtom(n3); }
+      }
+
       cl.push_back(sl);
       if(sl.isNegated()) {
         assumptions << "-" << sl.getSatVariable() << " ";
@@ -77,22 +84,25 @@ void DratTProofManager::printDratTProof(){
     cadical->addClause(cl,false);
     assumptions << "0" << std::endl;
   }
-  std::cout << "debug3" << std::endl;
   std::stringstream lemmas;
   for (std::vector<Node> icn : d_lemmaClauseNodes) {
     SatClause cl;
     lemmas << "t ";
-  std::cout << "debug4" << std::endl;
     for (Node n : icn){
-      std::cout << "n " << n << std::endl;
-      SatLiteral sl =
-	 ((n[1] == NodeManager::currentNM()->mkConst(true))
-	 ?
-          (cnf.hasLiteral(n[0]) ? cnf.getLiteral(n[0]) : cnf.convertAtom(n[0]))
-         :
-	  (cnf.hasLiteral(n[0][0]) ? cnf.getLiteral(n[0][0]) : cnf.convertAtom(n[0][0])));
+      Node n2 = (n[1] == NodeManager::currentNM()->mkConst(true)) ? n[0] : n[0][0];
+      SatLiteral sl;
+      if (cnf.hasLiteral(n2)) {
+        sl = cnf.getLiteral(n2); }
+      else {
+        std::cout << "2. n2 " << n2 << std::endl;
+        Node n3 = removeDoubleNegation(n2);
+        std::cout << "n2 " << n2 << std::endl;
+        if (cnf.hasLiteral(n3)) {
+          sl = cnf.getLiteral(n3); }
+        else {
+          sl = cnf.convertAtom(n3); }
+      }
 
-  std::cout << "debug5" << std::endl;
 
       cl.push_back(sl);
       if(sl.isNegated()) {
@@ -106,7 +116,6 @@ void DratTProofManager::printDratTProof(){
     lemmas << "0" << std::endl;
   }
 
-  std::cout << "debug6" << std::endl;
   cadical->solve();
   std::ifstream is = cadical->getDrat();
 
@@ -126,6 +135,7 @@ void DratTProofManager::printDratTProof(){
   //Print DRAT proof
   //TODO: Might need special handling if input is empty
   out << is.rdbuf();
+  std::cout << out.rdbuf();
 }
 
 
@@ -198,7 +208,6 @@ std::stringstream DratTProofManager::printPreamble()
       out << ") " << *(st.end()-1) << ")" << std::endl;
     }
   }
- std::cout << "preamble test print " << out.rdbuf() << std::endl;
  return out; 
 
 }
