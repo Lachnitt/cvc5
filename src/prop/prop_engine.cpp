@@ -708,8 +708,8 @@ std::shared_ptr<ProofNode> PropEngine::getProof(bool connectCnf)
     DratTProofManager *dpm = new DratTProofManager(d_pfCnfStream->getInputClauseNodes(),d_pfCnfStream->getLemmaClauseNodes());
 
     dpm->printDratTProof();
-  if (TraceIsOn("dratt"))
-  {
+   if (TraceIsOn("dratt"))
+   {
     std::vector<std::vector<Node>> cls = d_pfCnfStream->getInputClauseNodes();
     for (auto cl : cls)
     {
@@ -730,6 +730,7 @@ std::shared_ptr<ProofNode> PropEngine::getProof(bool connectCnf)
         Trace("dratt") << "\t" << l << "\n";
       }
     }
+   }
   }
   if (!d_env.isSatProofProducing())
   {

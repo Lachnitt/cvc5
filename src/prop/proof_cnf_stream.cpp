@@ -128,24 +128,6 @@ std::vector<std::shared_ptr<ProofNode>> ProofCnfStream::getLemmaClausesProofs()
   return pfs;
 }
 
-std::vector<std::vector<Node>> ProofCnfStream::getInputClauseNodes()
-{
-  std::vector<std::vector<Node>> icn;
-  for(const std::vector<Node> nv : d_inputClauseNodes){
-    icn.push_back(nv);
-  } 
-  return icn;
-}
-
-std::vector<std::vector<Node>> ProofCnfStream::getLemmaClauseNodes()
-{
-  std::vector<std::vector<Node>> icn;
-  for(const auto a : d_lemmaClauseNodes){
-    icn.push_back(a);
-  } 
-  return icn;
-}
-
 std::shared_ptr<ProofNode> ProofCnfStream::getProofFor(Node f)
 {
   return d_proof.getProofFor(f);
