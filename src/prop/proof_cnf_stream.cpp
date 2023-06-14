@@ -1027,11 +1027,12 @@ SatLiteral ProofCnfStream::handleOr(TNode node)
   added = d_cnfStream.assertClause(node.negate(), clause);
   if (added)
   {
-    std::vector<Node> disjuncts{node.notNode()};
+    std::vector<Node> disjuncts;
     for (unsigned i = 0; i < size; ++i)
     {
       disjuncts.push_back(node[i]);
     }
+    disjuncts.push_back(node.notNode());
     Node clauseNode = nm->mkNode(kind::OR, disjuncts);
     d_proof.addStep(clauseNode, PfRule::CNF_OR_POS, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleOr: CNF_OR_POS added " << clauseNode
