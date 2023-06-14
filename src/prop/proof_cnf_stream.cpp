@@ -956,11 +956,12 @@ SatLiteral ProofCnfStream::handleAnd(TNode node)
   Trace("cnf") << pop;
   if (added)
   {
-    std::vector<Node> disjuncts{node};
+    std::vector<Node> disjuncts;
     for (unsigned i = 0; i < size; ++i)
     {
       disjuncts.push_back(node[i].notNode());
     }
+    disjuncts.push_back(node);
     Node clauseNode = nm->mkNode(kind::OR, disjuncts);
     d_proof.addStep(clauseNode, PfRule::CNF_AND_NEG, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleAnd: CNF_AND_NEG added "
@@ -1121,7 +1122,7 @@ SatLiteral ProofCnfStream::handleIff(TNode node)
   if (added)
   {
     Node clauseNode =
-        nm->mkNode(kind::OR, node.notNode(), node[0].notNode(), node[1]);
+        nm->mkNode(kind::OR, node[0].notNode(), node[1], node.notNode());
     d_proof.addStep(clauseNode, PfRule::CNF_EQUIV_POS1, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleIff: CNF_EQUIV_POS1 added "
                  << clauseNode << "\n";
@@ -1135,7 +1136,7 @@ SatLiteral ProofCnfStream::handleIff(TNode node)
   if (added)
   {
     Node clauseNode =
-        nm->mkNode(kind::OR, node.notNode(), node[0], node[1].notNode());
+        nm->mkNode(kind::OR, node[0], node[1].notNode(), node.notNode());
     d_proof.addStep(clauseNode, PfRule::CNF_EQUIV_POS2, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleIff: CNF_EQUIV_POS2 added "
                  << clauseNode << "\n";
@@ -1154,7 +1155,7 @@ SatLiteral ProofCnfStream::handleIff(TNode node)
   if (added)
   {
     Node clauseNode =
-        nm->mkNode(kind::OR, node, node[0].notNode(), node[1].notNode());
+        nm->mkNode(kind::OR, node[0].notNode(), node[1].notNode(), node);
     d_proof.addStep(clauseNode, PfRule::CNF_EQUIV_NEG2, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleIff: CNF_EQUIV_NEG2 added "
                  << clauseNode << "\n";
@@ -1167,7 +1168,7 @@ SatLiteral ProofCnfStream::handleIff(TNode node)
   added = d_cnfStream.assertClause(node, a, b, lit);
   if (added)
   {
-    Node clauseNode = nm->mkNode(kind::OR, node, node[0], node[1]);
+    Node clauseNode = nm->mkNode(kind::OR, node[0], node[1], node);
     d_proof.addStep(clauseNode, PfRule::CNF_EQUIV_NEG1, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleIff: CNF_EQUIV_NEG1 added "
                  << clauseNode << "\n";
