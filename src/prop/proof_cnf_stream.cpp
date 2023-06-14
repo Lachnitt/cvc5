@@ -708,7 +708,7 @@ void ProofCnfStream::convertPropagation(TrustNode trn)
     std::vector<Node> disjunctsRes;
     for (unsigned i = 0, size = proven[0].getNumChildren(); i < size; ++i)
     {
-      clause[i] = d_cnfStream.getLiteral(proven[0][i].notNode());
+      clause[i] = ~d_cnfStream.getLiteral(proven[0][i]);
       disjunctsAndNeg.push_back(proven[0][i].notNode());
       disjunctsRes.push_back(proven[0][i].notNode());
     }
@@ -729,7 +729,7 @@ void ProofCnfStream::convertPropagation(TrustNode trn)
   else
   {
     clause.resize(2);
-    clause[0] = d_cnfStream.getLiteral(proven[0].notNode());
+    clause[0] = ~d_cnfStream.getLiteral(proven[0]);
     clause[1] = d_cnfStream.getLiteral(proven[1]);
     clauseExp = nm->mkNode(kind::OR, proven[0].notNode(), proven[1]);
   }
