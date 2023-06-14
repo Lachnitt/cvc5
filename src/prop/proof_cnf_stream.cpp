@@ -152,6 +152,7 @@ Node ProofCnfStream::normalizeAndRegister(TNode clauseNode, const SatClause& cla
   Node trueNode = nm->mkConst(true), falseNode = nm->mkConst(false);
   for (size_t i = 0, size = clause.size(); i < size; ++i)
   {
+    Assert(!clause[i].isNegated() || clauseNodePersistent[i].getKind() == kind::NOT);
     newClNodes.push_back(nm->mkNode(kind::SEXPR,
                                     clauseNodePersistent[i],
                                     clause[i].isNegated() ? falseNode : trueNode));
