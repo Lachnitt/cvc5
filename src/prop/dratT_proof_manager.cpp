@@ -27,7 +27,6 @@ Node removeDoubleNegation(Node n){
 void DratTProofManager::printDratTProof(){
   //stream to write to
   std::stringstream out;
-  std::cout << "debug" << std::endl;
   //Print declare-sort and declare-fun
   printPreamble(); 
   //Call Cadical
@@ -57,16 +56,12 @@ void DratTProofManager::printDratTProof(){
        break;
      }*/
     for (Node n : icn){
-      std::cout << n << std::endl;
       Node n2 = (n[1] == NodeManager::currentNM()->mkConst(true)) ? n[0] : n[0][0];
-        std::cout << "1. n2 " << n2 << std::endl;
       SatLiteral sl;
       if (cnf.hasLiteral(n2)) {
         sl = cnf.getLiteral(n2); }
       else {
-        std::cout << "n2 " << n2 << std::endl;
         Node n3 = removeDoubleNegation(n2);
-        std::cout << "n2 " << n2 << std::endl;
         if (cnf.hasLiteral(n3)) {
           sl = cnf.getLiteral(n3); }
         else {
@@ -94,9 +89,7 @@ void DratTProofManager::printDratTProof(){
       if (cnf.hasLiteral(n2)) {
         sl = cnf.getLiteral(n2); }
       else {
-        std::cout << "2. n2 " << n2 << std::endl;
         Node n3 = removeDoubleNegation(n2);
-        std::cout << "n2 " << n2 << std::endl;
         if (cnf.hasLiteral(n3)) {
           sl = cnf.getLiteral(n3); }
         else {

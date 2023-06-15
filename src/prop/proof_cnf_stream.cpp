@@ -152,8 +152,6 @@ Node ProofCnfStream::normalizeAndRegister(TNode clauseNode, const SatClause& cla
   Node trueNode = nm->mkConst(true), falseNode = nm->mkConst(false);
   for (size_t i = 0, size = clause.size(); i < size; ++i)
   {
-    std::cout << "clause[i] " << clause[i] << " clauseNodePersistent[i] " 
-    << clauseNodePersistent[i] << std::endl;
     Assert(!clause[i].isNegated() || clauseNodePersistent[i].getKind() == kind::NOT);
     newClNodes.push_back(nm->mkNode(kind::SEXPR,
                                     clauseNodePersistent[i],
@@ -1032,7 +1030,6 @@ SatLiteral ProofCnfStream::handleOr(TNode node)
     std::vector<Node> disjuncts;
     for (unsigned i = 0; i < size; ++i)
     {
-      std::cout << "node[i] " << node[i] << std::endl;
       disjuncts.push_back(node[i]);
     }
     disjuncts.push_back(node.notNode());
@@ -1243,7 +1240,7 @@ SatLiteral ProofCnfStream::handleImplies(TNode node)
   added = d_cnfStream.assertClause(node, ~b, lit);
   if (added)
   {
-    Node clauseNode = nm->mkNode(kind::OR, node, node[1].notNode());
+    Node clauseNode = nm->mkNode(kind::OR, node[1].notNode(), node);
     d_proof.addStep(clauseNode, PfRule::CNF_IMPLIES_NEG2, {}, {node});
     Trace("cnf") << "ProofCnfStream::handleImplies: CNF_IMPLIES_NEG2 added "
                  << clauseNode << "\n";
