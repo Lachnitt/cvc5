@@ -133,6 +133,29 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            children,
                            new_args,
                            *cdp);
+    // ======== ARITH_DIV_BY_CONST_ELIM
+    // t/c = t*1/c
+    // Special case c=1:  eq_reflexive
+    //
+    //--------- prod_simplify
+    // t*1 = t
+    //--------- SYMM              --------- REFL
+    // t = t*1                      c = c    
+    //--------------------------------------- EQ_CONGRUENT
+    // t/c = t*1/c
+    // 
+    case ProofRewriteRule::ARITH_DIV_BY_CONST_ELIM:
+    {
+       Assert(res.getNumChildren() == 2);
+       Assert(res[0].getNumChildren() == 2);
+       std::vector<Node> con2{res[1][0].begin(), res[1][0].end()};
+       if (con2 == nm->mkConstInt(1) )
+	{
+         std::cout << "here"<< std::endl;
+	}
+       std::cout << "con2" << con2 << std::endl;
+       break; 
+    }
     default: break;
   }
   return addAletheStep(AletheRule::HOLE,
