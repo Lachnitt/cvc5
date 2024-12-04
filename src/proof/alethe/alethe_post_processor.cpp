@@ -525,6 +525,10 @@ bool AletheProofPostprocessCallback::update(Node res,
           {nm->mkRawSymbol("\"arith-poly-norm\"", nm->sExprType())},
           *cdp);
     }
+      return addAletheStep(AletheRule::HOLE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           children,
     case ProofRule::EVALUATE:
     {
       return addAletheStep(AletheRule::RARE_REWRITE,
@@ -533,6 +537,34 @@ bool AletheProofPostprocessCallback::update(Node res,
                            children,
                            {nm->mkRawSymbol("\"evaluate\"", nm->sExprType())},
                            *cdp);
+    }
+    case ProofRule::ACI_NORM:
+    {
+      Kind k = res[0].getKind();
+      if (k == Kind::OR){
+        std::cout << "Found or" << std::endl;
+      }
+      else if (k == Kind::AND){
+
+        std::cout << "Found and" << std::endl;
+      }
+      else if (k == Kind::BITVECTOR_AND || k == Kind::BITVECTOR_OR)
+      {
+	// This will be supported in the future
+        return addAletheStep(AletheRule::HOLE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           children,
+			   new_args,
+			   *cdp);
+      }
+      // For all other operators getACINormalForm returns the unchanged term
+      return addAletheStep(AletheRule::EQ_REFLEXIVE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           children,
+                           new_args,
+			   *cdp);
     }
     // If the trusted rule is a theory lemma from arithmetic, we try to phrase
     // it with "lia_generic".

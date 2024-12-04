@@ -108,6 +108,7 @@ const char* aletheRuleToString(AletheRule id)
     case AletheRule::IMPLIES_SIMPLIFY: return "implies_simplify";
     case AletheRule::EQUIV_SIMPLIFY: return "equiv_simplify";
     case AletheRule::BOOL_SIMPLIFY: return "bool_simplify";
+    case AletheRule::AC_SIMP: return "ac_simp";
     case AletheRule::QUANTIFIER_SIMPLIFY: return "qnt_simplify";
     case AletheRule::DIV_SIMPLIFY: return "div_simplify";
     case AletheRule::PROD_SIMPLIFY: return "prod_simplify";
