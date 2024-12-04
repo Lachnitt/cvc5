@@ -17,6 +17,7 @@
 
 #include <sstream>
 
+#include "expr/nary_term_util.h"
 #include "expr/node_algorithm.h"
 #include "expr/skolem_manager.h"
 #include "proof/alethe/alethe_proof_rule.h"
@@ -525,10 +526,6 @@ bool AletheProofPostprocessCallback::update(Node res,
           {nm->mkRawSymbol("\"arith-poly-norm\"", nm->sExprType())},
           *cdp);
     }
-      return addAletheStep(AletheRule::HOLE,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           children,
     case ProofRule::EVALUATE:
     {
       return addAletheStep(AletheRule::RARE_REWRITE,
@@ -541,12 +538,62 @@ bool AletheProofPostprocessCallback::update(Node res,
     case ProofRule::ACI_NORM:
     {
       Kind k = res[0].getKind();
-      if (k == Kind::OR){
-        std::cout << "Found or" << std::endl;
-      }
-      else if (k == Kind::AND){
+      if (k == Kind::OR || k == Kind::AND){
+         //Stolen and modified from nary_term_util.cpp
+	 Node an;
+	 TypeNode atn = res.getType();
+	 Node nt = expr::getNullTerminator(k, atn);
+	 std::vector<Node> toProcess;
+	 toProcess.insert(toProcess.end(), res.rbegin(), res.rend());
+	 std::vector<Node> children;
+	 Node cur;
+	 do
+	 {
+	   cur = toProcess.back();
+	   toProcess.pop_back();
+	   if (cur == nt)
+	   {
+	     // ignore null terminator (which is the neutral element)
+	     continue;
+	   }
+	   else if (cur.getKind() == k)
+	   {
+	     // flatten
+	     toProcess.insert(toProcess.end(), cur.rbegin(), cur.rend());
+	   }
+	   else if (std::find(children.begin(), children.end(), cur)
+			    == children.end())
+	    {
+	      // add to final children if not idempotent or if not a duplicate
+	      children.push_back(cur);
+	    }
+	  } while (!toProcess.empty());
+       	  an = children.empty() ? nt
+           : (children.size() == 1
+           ? children[0]
+           : NodeManager::currentNM()->mkNode(k, children));
+        AletheRule new_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
 
-        std::cout << "Found and" << std::endl;
+        Node n1 = nm->mkNode(Kind::EQUAL, res[0], an); 
+        Node n2 = nm->mkNode(Kind::EQUAL, an, res[1]);
+        return addAletheStep(new_rule,
+                           n1,
+                           nm->mkNode(Kind::SEXPR, d_cl, n1),
+                           {},
+			   {},
+			   *cdp)
+        && addAletheStep(AletheRule::HOLE,//Soon shuffle
+                           n2,
+                           nm->mkNode(Kind::SEXPR, d_cl, n2),
+                           {},
+			   {},
+			   *cdp)
+        && addAletheStep(AletheRule::EQ_TRANSITIVE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {n1,n2},
+			   {},
+			   *cdp);
       }
       else if (k == Kind::BITVECTOR_AND || k == Kind::BITVECTOR_OR)
       {
@@ -831,7 +878,6 @@ bool AletheProofPostprocessCallback::update(Node res,
     case ProofRule::MODUS_PONENS:
     {
       Node vp1 = nm->mkNode(Kind::SEXPR, d_cl, children[0].notNode(), res);
-
       return addAletheStep(
                  AletheRule::IMPLIES, vp1, vp1, {children[1]}, {}, *cdp)
              && addAletheStep(AletheRule::RESOLUTION,
