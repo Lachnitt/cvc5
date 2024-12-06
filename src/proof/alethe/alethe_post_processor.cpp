@@ -543,7 +543,7 @@ bool AletheProofPostprocessCallback::update(Node res,
     {
       Kind k = res[0].getKind();
       if (k == Kind::OR || k == Kind::AND){
-	 bool success;
+	 bool success = true;
 	 std::cout << "res[0]: " << res[0] << std::endl;
 	 std::cout << "res[1]: " << res[1] << std::endl;
 
@@ -575,8 +575,26 @@ bool AletheProofPostprocessCallback::update(Node res,
 	 Node flattenedLHS = (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children));
-        bool wasFlattened=(flattenedLHS != res[1]);
-	
+        bool wasFlattened=(flattenedLHS != res[0]);
+	std::cout << "Was flattened: " << wasFlattened << std::endl;
+	std::cout << "flattenedLHS " << flattenedLHS << std::endl;
+
+        Node flattenedRes = nm->mkNode(Kind::EQUAL,res[0],flattenedLHS);
+	if (wasFlattened){
+          success &= addAletheStep(AletheRule::AC_SIMP,
+                           flattenedRes,
+                           nm->mkNode(Kind::SEXPR, d_cl, flattenedRes),
+                           {},
+			   {},
+			   *cdp);
+        }
+	if (flattenedLHS == res[1]){
+	  //No simplification needed
+          return success; 
+	}
+
+
+
 	//Simplify, this will do more than ACI norm does when it deletes idempotency
 	//Thus, we have to apply it to both the flattenedRHS and the LHS.
         new_children.clear();
@@ -606,8 +624,10 @@ bool AletheProofPostprocessCallback::update(Node res,
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
         bool wasSimplified=(simplifiedLHS != flattenedLHS);
-
-	Node child = flattenedLHS;
+	std::cout << "Was simplified: " << wasSimplified << std::endl;
+	std::cout << "simplifiedLHS " << simplifiedLHS << std::endl;
+	
+        Node child = flattenedLHS;
         if (wasSimplified){
          Node flattenedRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedLHS);
 	 success &=
@@ -642,8 +662,11 @@ bool AletheProofPostprocessCallback::update(Node res,
 	  }
           Node simplifiedRHS = (new_children.size() == 0 ? nt : (new_children.size() == 1
              ? new_children[0]
-             : NodeManager::currentNM()->mkNode(k, new_children)));
-		  
+             : NodeManager::currentNM()->mkNode(k, new_children)));	  
+	  std::cout << "simplifiedRHS " << simplifiedRHS << std::endl;
+
+          Assert(simplifiedLHS == simplifiedRHS);
+
           Node simplifiedRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedLHS);
           Node simplifiedResSym = nm->mkNode(Kind::EQUAL,simplifiedLHS,flattenedLHS);
 	  AletheRule new_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
@@ -653,13 +676,13 @@ bool AletheProofPostprocessCallback::update(Node res,
                            {},
 			   {},
 			   *cdp)
-             && addAletheStep(new_rule,
+             && addAletheStep(AletheRule::SYMM,
                            simplifiedResSym,
                            nm->mkNode(Kind::SEXPR, d_cl, simplifiedResSym),
-                           {},
+                           {simplifiedRes},
 			   {},
 			   *cdp);
-	  child = simplifiedResSym;
+	     child = simplifiedResSym;
         }
 
 
