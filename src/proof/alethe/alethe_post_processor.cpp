@@ -578,22 +578,23 @@ bool AletheProofPostprocessCallback::update(Node res,
     // ------------ TRANS
     //     res
     //
-    // If neither flattening nor simplification took place we ouput a EQ_REFL step
+    // If neither flattening nor simplification took place we ouput a EQ_REFL step TODO: Currently still AC_NORM, might not be bad though
     //
     // If no flattening took place, i.e. flatten(r[0])=r[0] T1 is simplified to 
     //
     // ---------------------- OR_SIMPLIFY
     //        VP3
     //
-    // If no simplification took place, T2 can be avoided completely and 
+    // If no simplification took place, T2 can be avoided completely and the only step that remains of T1 is the ac_simp step
 
     case ProofRule::ACI_NORM:
     {
       Kind k = res[0].getKind();
       if (k == Kind::OR || k == Kind::AND){
 	 bool success = true;
-	 std::cout << "res[0]: " << res[0] << std::endl;
-	 std::cout << "res[1]: " << res[1] << std::endl;
+         AletheRule simplify_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
+	 //std::cout << "res[0]: " << res[0] << std::endl;
+	 //std::cout << "res[1]: " << res[1] << std::endl;
 
 	 //Flattening and deleting of dupplicates of LHS
          //Stolen and modified from nary_term_util.cpp
@@ -620,18 +621,19 @@ bool AletheProofPostprocessCallback::update(Node res,
 	    }
 	  } while (!toProcess.empty());
 	 Assert(!new_children.empty());
+         //std::reverse(new_children.begin(), new_children.end());
 	 Node flattenedLHS = (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children));
         bool wasFlattened=(flattenedLHS != res[0]);
-	std::cout << "Was flattened: " << wasFlattened << std::endl;
-	std::cout << "flattenedLHS " << flattenedLHS << std::endl;
+	//std::cout << "Was flattened: " << wasFlattened << std::endl;
+	//std::cout << "flattenedLHS " << flattenedLHS << std::endl;
 
-        Node flattenedRes = nm->mkNode(Kind::EQUAL,res[0],flattenedLHS);
+        Node vp1 = nm->mkNode(Kind::EQUAL,res[0],flattenedLHS);
 	if (wasFlattened){
           success &= addAletheStep(AletheRule::AC_SIMP,
-                           flattenedRes,
-                           nm->mkNode(Kind::SEXPR, d_cl, flattenedRes),
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
                            {},
 			   {},
 			   *cdp);
@@ -661,34 +663,52 @@ bool AletheProofPostprocessCallback::update(Node res,
             while(cur_without_negation.getKind() == Kind::NOT && cur_without_negation[0].getKind() == Kind::NOT){
               cur_without_negation=cur_without_negation[0][0];
 	    }
-	    if (std::find(without_negation.begin(), without_negation.end(), cur_without_negation) == without_negation.end()){
+	    if (std::find(without_negation.begin(), without_negation.end(), cur_without_negation) != without_negation.end()){
 	      new_children={inverse};
               break;
 	    }
 	    without_negation.push_back(cur_without_negation);
 	  }
+	  new_children.push_back(current);
 	}
         Node simplifiedFlattenedLHS = (new_children.size() == 0 ? nt : (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
-        bool wasSimplified=(simplifiedLHS != flattenedLHS);
-	std::cout << "Was simplified: " << wasSimplified << std::endl;
-	std::cout << "simplifiedLHS " << simplifiedLHS << std::endl;
+        bool wasSimplified=(simplifiedFlattenedLHS != flattenedLHS);
+	//std::cout << "Was simplified: " << wasSimplified << std::endl;
+	//std::cout << "nt " << nt << std::endl;
+	//std::cout << "inverse " << inverse << std::endl;
+	//std::cout << "simplifiedFlattenedLHS " << simplifiedFlattenedLHS << std::endl;
 	
         Node child = flattenedLHS;
         Assert (wasSimplified);
-        Node sfRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedFlattenedLHS);
-        AletheRule new_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
+        Node vp2 = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedFlattenedLHS);
+        Node vp3 = nm->mkNode(Kind::EQUAL,res[0],simplifiedFlattenedLHS);
+        Node final_child;
 	success &=
-           addAletheStep(new_rule
-                           sfRes,
-                           nm->mkNode(Kind::SEXPR, d_cl, sfRes),
+           addAletheStep(simplify_rule,
+                           vp2,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp2),
                            {},
 			   {},
 			   *cdp);
+        if (wasFlattened){
+	   final_child = vp3;
+	   success &=
+           addAletheStep(AletheRule::TRANS,
+                           vp3,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp3),
+                           {vp1,vp2},
+			   {},
+			   *cdp);
+         }
+         else {
+           final_child=vp2;
+	 }
 
           std::vector<Node> new_RHS;
 	  without_negation.clear();
+          new_children.clear();
           for (Node current : res[1]){
             if (current == nt){
 	      continue;
@@ -702,59 +722,66 @@ bool AletheProofPostprocessCallback::update(Node res,
               while(cur_without_negation.getKind() == Kind::NOT && cur_without_negation[0].getKind() == Kind::NOT){
                 cur_without_negation=cur_without_negation[0][0];
 	      }
-	      if (std::find(without_negation.begin(), without_negation.end(), cur_without_negation) == without_negation.end()){
+	      if (std::find(without_negation.begin(), without_negation.end(), cur_without_negation) != without_negation.end()){
 	        new_children={inverse};
                 break;
 	      }
 	      without_negation.push_back(cur_without_negation);
 	    }
+	    new_children.push_back(current);
 	  }
           Node simplifiedRHS = (new_children.size() == 0 ? nt : (new_children.size() == 1
              ? new_children[0]
              : NodeManager::currentNM()->mkNode(k, new_children)));	  
-	  std::cout << "simplifiedRHS " << simplifiedRHS << std::endl;
-          Node sRHSRes = nm->mkNode(Kind::EQUAL,res[1],simplifiedRHS);
-	  success &=
-           addAletheStep(new_rule
-                           sRHSRes,
-                           nm->mkNode(Kind::SEXPR, d_cl, sRHSRes),
-                           {},
-			   {},
-			   *cdp);
+	  //std::cout << "simplifiedRHS " << simplifiedRHS << std::endl;
+	  //invariant
+          Assert(simplifiedFlattenedLHS == simplifiedRHS);
 
 
+          Node vp4 = nm->mkNode(Kind::EQUAL,res[1],simplifiedRHS);
+          Node vp5 = nm->mkNode(Kind::EQUAL,simplifiedRHS,simplifiedFlattenedLHS);
+          Node vp6 = nm->mkNode(Kind::EQUAL,res[1],simplifiedFlattenedLHS);
+          Node vp7 = nm->mkNode(Kind::EQUAL,simplifiedFlattenedLHS,res[1]);
 
-
-
-          Assert(simplifiedLHS == simplifiedRHS);
-
-          Node simplifiedRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedLHS);
-          Node simplifiedResSym = nm->mkNode(Kind::EQUAL,simplifiedLHS,flattenedLHS);
-          success &= addAletheStep(new_rule,
-                           simplifiedRes,
-                           nm->mkNode(Kind::SEXPR, d_cl, simplifiedRes),
+	  return success &&
+           addAletheStep(simplify_rule,
+                           vp4,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp4),
                            {},
 			   {},
 			   *cdp)
-             && addAletheStep(AletheRule::SYMM,
-                           simplifiedResSym,
-                           nm->mkNode(Kind::SEXPR, d_cl, simplifiedResSym),
-                           {simplifiedRes},
+           &&
+           addAletheStep(AletheRule::SHUFFLE,
+                           vp5,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp5),
+                           {},
 			   {},
-			   *cdp);
-	     child = simplifiedResSym;
-        }
+			   *cdp)
+           &&
+           addAletheStep(AletheRule::TRANS,
+                           vp6,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp6),
+                           {vp4,vp5},
+			   {},
+			   *cdp)
+           &&
+           addAletheStep(AletheRule::SYMM,
+                           vp7,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp7),
+                           {vp6},
+			   {},
+			   *cdp)
 
-
-
-	//Shuffling
-
-        return addAletheStep(AletheRule::TRANS,
+           &&
+           addAletheStep(AletheRule::TRANS,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {child},
+                           {final_child,vp7},
 			   {},
-			   *cdp);
+			   *cdp)
+;
+
+
       }
       else if (k == Kind::BITVECTOR_AND || k == Kind::BITVECTOR_OR)
       {
