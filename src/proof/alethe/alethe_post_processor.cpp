@@ -537,7 +537,55 @@ bool AletheProofPostprocessCallback::update(Node res,
     }
     //
     //
-    // First flatten, then deleted idempotency
+    // First flatten, then simplify (everything or_simplify/and_simpify do which includes idempotency + shuffling)
+    // res=(res[0] = res[1])
+    // Note: res[1] != simplify(flatten(res[0])) because simplify is stronger than the simplification ACI_norm does.
+    // We are however using the invariant that simplify(flatten(res[0])) and simplify(res[1]) consists of the same literals
+    // but might be shuffeled.
+    //
+    //
+    // VP1: (cl (res[0] = flatten(res[0])))
+    // VP2: (cl (flatten(res[0]) = simplify(flatten(res[0]))))
+    // VP3: (cl (res[0] = simplify(flatten(res[0]))))
+    // VP4: (cl (res[1] = simplify(res[1])))
+    // VP5: (cl ((simplify(res[1])) = simplify(flatten(res[0]))))
+    // VP6: (cl (res[1] = simplify(flatten(res[0]))))
+    // VP7: (cl (simplify(flatten(res[0]) = res[1])))
+    //
+    // 
+    // For the LHS
+    // T1: 
+    //
+    //            -------------- AC_SIMP     ------------- OR_SIMPLIFY/AND_SIMPLIFY
+    //  	     VP1                      VP2 
+    //            ---------------------------------------- TRANS
+    //                            VP3
+    //
+    // For the RHS
+    // T2:
+    //
+    //  ------- OR_SIMPLIFY/AND_SIMPLIFY       ---------------- SHUFFLE
+    //   VP4                                      VP5
+    // -------------------------------------------------------- TRANS
+    //                          VP6
+    // -------------------------------------------------------- SYMM 
+    //                          VP7
+    //
+    // Putting both together
+    // T:
+    //
+    //   T1    T2
+    // ------------ TRANS
+    //     res
+    //
+    // If neither flattening nor simplification took place we ouput a EQ_REFL step
+    //
+    // If no flattening took place, i.e. flatten(r[0])=r[0] T1 is simplified to 
+    //
+    // ---------------------- OR_SIMPLIFY
+    //        VP3
+    //
+    // If no simplification took place, T2 can be avoided completely and 
 
     case ProofRule::ACI_NORM:
     {
@@ -620,7 +668,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	    without_negation.push_back(cur_without_negation);
 	  }
 	}
-        Node simplifiedLHS = (new_children.size() == 0 ? nt : (new_children.size() == 1
+        Node simplifiedFlattenedLHS = (new_children.size() == 0 ? nt : (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
         bool wasSimplified=(simplifiedLHS != flattenedLHS);
@@ -628,12 +676,13 @@ bool AletheProofPostprocessCallback::update(Node res,
 	std::cout << "simplifiedLHS " << simplifiedLHS << std::endl;
 	
         Node child = flattenedLHS;
-        if (wasSimplified){
-         Node flattenedRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedLHS);
-	 success &=
-           addAletheStep(AletheRule::SHUFFLE,
-                           simplifiedLHS,
-                           nm->mkNode(Kind::SEXPR, d_cl, simplifiedLHS),
+        Assert (wasSimplified);
+        Node sfRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedFlattenedLHS);
+        AletheRule new_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
+	success &=
+           addAletheStep(new_rule
+                           sfRes,
+                           nm->mkNode(Kind::SEXPR, d_cl, sfRes),
                            {},
 			   {},
 			   *cdp);
@@ -664,12 +713,23 @@ bool AletheProofPostprocessCallback::update(Node res,
              ? new_children[0]
              : NodeManager::currentNM()->mkNode(k, new_children)));	  
 	  std::cout << "simplifiedRHS " << simplifiedRHS << std::endl;
+          Node sRHSRes = nm->mkNode(Kind::EQUAL,res[1],simplifiedRHS);
+	  success &=
+           addAletheStep(new_rule
+                           sRHSRes,
+                           nm->mkNode(Kind::SEXPR, d_cl, sRHSRes),
+                           {},
+			   {},
+			   *cdp);
+
+
+
+
 
           Assert(simplifiedLHS == simplifiedRHS);
 
           Node simplifiedRes = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedLHS);
           Node simplifiedResSym = nm->mkNode(Kind::EQUAL,simplifiedLHS,flattenedLHS);
-	  AletheRule new_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
           success &= addAletheStep(new_rule,
                            simplifiedRes,
                            nm->mkNode(Kind::SEXPR, d_cl, simplifiedRes),
