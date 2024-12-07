@@ -793,6 +793,15 @@ bool AletheProofPostprocessCallback::update(Node res,
 			   new_args,
 			   *cdp);
       }
+      else if (expr::isAssocCommIdem(k) || expr::isAssoc(k))
+      {
+        return addAletheStep(AletheRule::HOLE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           children,
+			   new_args,
+			   *cdp);
+      }
       // For all other operators getACINormalForm returns the unchanged term
       return addAletheStep(AletheRule::EQ_REFLEXIVE,
                            res,
