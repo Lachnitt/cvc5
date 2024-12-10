@@ -94,36 +94,49 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
 
 //Naive implementation, probably want to implement caching at some point
 Node applyAcSimp(Node current){
-  Kind k=current.getKind();
-  if (k == Kind::AND || k == Kind::OR){
-    std::vector<Node> new_children;
-    for (Node child : current){
-      if (std::find(new_children.begin(), new_children.end(), child) == new_children.end()){
+  Kind k = current.getKind();
+  if (k == Kind::APPLY_UF){
+  std::cout << "k: " << k << " " << current << std::endl;
+    for (Node c : current){
+	std::cout << "child" << c << std::endl;
+}
+  }
+  std::vector<Node> new_children;
+  for (Node child : current){
+    if (std::find(new_children.begin(), new_children.end(), child) == new_children.end()){
+      Node new_child = applyAcSimp(child);
+      if (k == Kind::AND || k == Kind::OR){
         Kind k_child = child.getKind();
         if (k_child == k){
-          Node new_child = applyAcSimp(child);
 	  for (Node c : new_child){
             if (std::find(new_children.begin(), new_children.end(), c) == new_children.end()){
 	      new_children.insert(new_children.end(),new_child.begin(),new_child.end());
 	    }
           }
         }
-        else if (k_child == Kind::AND || k_child == Kind::OR){
-          Node new_child = applyAcSimp(child);
-          if (std::find(new_children.begin(), new_children.end(), new_child) == new_children.end()){
+        else {
 	    new_children.push_back(new_child);
-	  }
-        }
-        else{
-	  new_children.push_back(child);
         }
       }
+      else {
+	    new_children.push_back(new_child);
+        
+      }
     }
-    return NodeManager::currentNM()->mkNode(k,new_children); 
+
   }
-  else{
+  if (new_children.size() == 0){
     return current;
   }
+    if (new_children.size() == 1 && (k == Kind::AND || k == Kind::OR)){
+      return new_children[0];
+    }
+  if (k == Kind::APPLY_UF){
+    new_children.insert(new_children.begin(),current.getOperator());
+    return NodeManager::currentNM()->mkNode(k,new_children); 
+  }
+  return NodeManager::currentNM()->mkNode(k,new_children); 
+  
   Assert(False);
 }
 
