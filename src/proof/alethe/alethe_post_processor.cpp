@@ -93,50 +93,59 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
 }
 
 //Naive implementation, probably want to implement caching at some point
-Node applyAcSimp(Node current){
-  Kind k = current.getKind();
-  if (k == Kind::APPLY_UF){
-  std::cout << "k: " << k << " " << current << std::endl;
-    for (Node c : current){
-	std::cout << "child" << c << std::endl;
-}
+Node applyAcSimp(std::map<Node,Node>& cache, Node term){ 
+  //if (cache.find(term) != cache.end()){
+  //   return cache[term];
+  //}
+  Kind k = term.getKind();
+  Node result;
+  //std::cout << "term: " << term << " kind " << k << std::endl;
+  if (term.getMetaKind() == metakind::PARAMETERIZED){
+    //not supported
+    return term;
   }
   std::vector<Node> new_children;
-  for (Node child : current){
-    if (std::find(new_children.begin(), new_children.end(), child) == new_children.end()){
-      Node new_child = applyAcSimp(child);
-      if (k == Kind::AND || k == Kind::OR){
-        Kind k_child = child.getKind();
-        if (k_child == k){
-	  for (Node c : new_child){
-            if (std::find(new_children.begin(), new_children.end(), c) == new_children.end()){
-	      new_children.insert(new_children.end(),new_child.begin(),new_child.end());
-	    }
-          }
-        }
-        else {
-	    new_children.push_back(new_child);
-        }
-      }
-      else {
-	    new_children.push_back(new_child);
-        
-      }
+  if (k == Kind::AND || k == Kind::OR){
+    for (Node child : term){
+       Node new_term = applyAcSimp(cache, child);
+       Kind k_new_term = new_term.getKind();
+       if (k_new_term == k){
+         for (Node c : new_term){
+           if (std::find(new_children.begin(), new_children.end(), c) == new_children.end()){
+	      new_children.push_back(c);
+	   }
+         }
+       }
+       else {
+          if (std::find(new_children.begin(), new_children.end(), new_term) == new_children.end()){
+	      new_children.push_back(new_term);
+	   }
+       } 
     }
-
-  }
-  if (new_children.size() == 0){
-    return current;
-  }
-    if (new_children.size() == 1 && (k == Kind::AND || k == Kind::OR)){
+    if (new_children.size() == 1){
       return new_children[0];
     }
-  if (k == Kind::APPLY_UF){
-    new_children.insert(new_children.begin(),current.getOperator());
-    return NodeManager::currentNM()->mkNode(k,new_children); 
+    else {
+      result = NodeManager::currentNM()->mkNode(k, new_children);
+    }
   }
-  return NodeManager::currentNM()->mkNode(k,new_children); 
-  
+  else if (term.getNumChildren() == 0){
+    return term;
+  }
+  else { 
+    for (Node child : term){ 
+      Node new_term = applyAcSimp(cache, child);
+        new_children.push_back(new_term);
+      
+    }
+    if (k == Kind::APPLY_UF){
+      new_children.insert(new_children.begin(),term.getOperator());
+    }
+    result = NodeManager::currentNM()->mkNode(k,new_children);
+  }
+  cache.insert({term,result});
+  //std::cout << "result: " << result << std::endl;
+  return result;
   Assert(False);
 }
 
@@ -684,9 +693,10 @@ bool AletheProofPostprocessCallback::update(Node res,
       if (k == Kind::OR || k == Kind::AND){
         AletheRule simplify_rule = (k==Kind::AND ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY);
 
-        Node flattenedLHS = applyAcSimp(res[0]);
+        std::map<Node,Node> emptyMap;
+        Node flattenedLHS = applyAcSimp(emptyMap,res[0]);
         Node vp1 = nm->mkNode(Kind::EQUAL,res[0],flattenedLHS);
-        Node flattenedRHS = applyAcSimp(res[1]);
+        Node flattenedRHS = applyAcSimp(emptyMap,res[1]);
         Node vp4a = nm->mkNode(Kind::EQUAL,res[1],flattenedRHS);
      
         Node simplifiedFlattenedLHS = applyNarySimplify(flattenedLHS);
