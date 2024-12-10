@@ -102,11 +102,17 @@ Node applyAcSimp(Node current){
         Kind k_child = child.getKind();
         if (k_child == k){
           Node new_child = applyAcSimp(child);
-	  new_children.insert(new_children.end(),new_child.begin(),new_child.end());
+	  for (Node c : new_child){
+            if (std::find(new_children.begin(), new_children.end(), c) == new_children.end()){
+	      new_children.insert(new_children.end(),new_child.begin(),new_child.end());
+	    }
+          }
         }
         else if (k_child == Kind::AND || k_child == Kind::OR){
           Node new_child = applyAcSimp(child);
-	  new_children.push_back(new_child);
+          if (std::find(new_children.begin(), new_children.end(), new_child) == new_children.end()){
+	    new_children.push_back(new_child);
+	  }
         }
         else{
 	  new_children.push_back(child);
@@ -667,22 +673,21 @@ bool AletheProofPostprocessCallback::update(Node res,
 
         Node flattenedLHS = applyAcSimp(res[0]);
         Node vp1 = nm->mkNode(Kind::EQUAL,res[0],flattenedLHS);
-
         Node flattenedRHS = applyAcSimp(res[1]);
         Node vp4a = nm->mkNode(Kind::EQUAL,res[1],flattenedRHS);
      
         Node simplifiedFlattenedLHS = applyNarySimplify(flattenedLHS);
-        Node vp4b = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedFlattenedLHS);
-        Node vp4 = nm->mkNode(Kind::EQUAL,res[0],simplifiedFlattenedLHS);
+        Node vp2 = nm->mkNode(Kind::EQUAL,flattenedLHS,simplifiedFlattenedLHS);
+        Node vp3 = nm->mkNode(Kind::EQUAL,res[0],simplifiedFlattenedLHS);
 
         Node simplifiedFlattenedRHS = applyNarySimplify(flattenedRHS);
         Assert(simplifiedFlattenedRHS == simplifiedFlattenedLHS); //invariant
-        Node vp2 = nm->mkNode(Kind::EQUAL,flattenedRHS,simplifiedFlattenedRHS);
-        Node vp3 = nm->mkNode(Kind::EQUAL,res[0],simplifiedFlattenedRHS);
+        Node vp4b = nm->mkNode(Kind::EQUAL,flattenedRHS,simplifiedFlattenedRHS);
+        Node vp4 = nm->mkNode(Kind::EQUAL,res[1],simplifiedFlattenedRHS);
 
 	Node vp5 = nm->mkNode(Kind::EQUAL,simplifiedFlattenedRHS, simplifiedFlattenedLHS);
 	Node vp6 = nm->mkNode(Kind::EQUAL,res[1], simplifiedFlattenedLHS);
-	Node vp7 = nm->mkNode(Kind::EQUAL,simplifiedFlattenedLHS,res[0]);
+	Node vp7 = nm->mkNode(Kind::EQUAL,simplifiedFlattenedLHS,res[1]);
  
         bool success = true;
 
@@ -736,7 +741,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	success &=
            addAletheStep(AletheRule::SHUFFLE,
                          vp5,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp4a),
+                         nm->mkNode(Kind::SEXPR, d_cl, vp5),
                          {},
 			 {},
 			 *cdp)
