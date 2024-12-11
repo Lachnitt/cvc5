@@ -94,9 +94,9 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
 
 //Naive implementation, probably want to implement caching at some point
 Node applyAcSimp(std::map<Node,Node>& cache, Node term){ 
-  //if (cache.find(term) != cache.end()){
-  //   return cache[term];
-  //}
+  if (cache.find(term) != cache.end()){
+     return cache[term];
+  }
   Kind k = term.getKind();
   Node result;
   //std::cout << "term: " << term << " kind " << k << std::endl;
@@ -144,7 +144,6 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
     result = NodeManager::currentNM()->mkNode(k,new_children);
   }
   cache.insert({term,result});
-  //std::cout << "result: " << result << std::endl;
   return result;
   Assert(False);
 }
