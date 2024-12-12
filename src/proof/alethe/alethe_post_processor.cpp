@@ -871,7 +871,14 @@ bool AletheProofPostprocessCallback::update(Node res,
       std::stringstream ss;
       if (hasTrustId)
       {
-        ss << "\"" << tid << "\"";
+        cvc5::internal::theory::TheoryId thid;
+        bool hasTheoryId = theory::builtin::BuiltinProofRuleChecker::getTheoryId(args[0], thid);
+        if (hasTheoryId){
+          ss << "\"" << tid << "\" \"" << thid << "\"";
+	}
+        else{
+          ss << "\"" << tid << "\"";
+        }
       }
       else
       {
