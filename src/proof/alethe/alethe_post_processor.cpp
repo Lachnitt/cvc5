@@ -157,7 +157,9 @@ Node applyNarySimplify(Node res){
   Node inverse = (k==Kind::AND ? nm->mkConst(false) : nm->mkConst(true));
   TypeNode atn = res.getType();
   Node nt = expr::getNullTerminator(k, atn);
+  //std::cout << "nt " << nt << std::endl;
   for (Node current : res){
+    //std::cout << "current " << current << std::endl;
     if (current == nt){
       continue;
     }
@@ -178,10 +180,12 @@ Node applyNarySimplify(Node res){
     }
     new_children.push_back(current);
   }
-  Node simplifiedFlattenedRes = (new_children.size() == 0 ? nt : (new_children.size() == 1
+  //std::cout << "res " << res << std::endl;
+  //std::cout << "New children " << new_children << std::endl;
+  Node simplifiedFlattenedRes = (new_children.size() == 0 ? res : (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
-  return res;
+  return simplifiedFlattenedRes;
 }
 
 bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
@@ -703,6 +707,12 @@ bool AletheProofPostprocessCallback::update(Node res,
         Node vp3 = nm->mkNode(Kind::EQUAL,res[0],simplifiedFlattenedLHS);
 
         Node simplifiedFlattenedRHS = applyNarySimplify(flattenedRHS);
+        /*std::cout << "Original RHS: " << res[1] << std::endl; 
+        std::cout << "Flattened RHS: " <<  flattenedRHS << std::endl; 
+        std::cout << "New RHS: " << simplifiedFlattenedRHS << std::endl;
+        std::cout << "Original LHS: " << res[0] << std::endl; 
+        std::cout << "Flattened LHS: " <<  flattenedLHS << std::endl; 
+        std::cout << "New LHS: " << simplifiedFlattenedLHS << std::endl; */
         Assert(simplifiedFlattenedRHS == simplifiedFlattenedLHS); //invariant
         Node vp4b = nm->mkNode(Kind::EQUAL,flattenedRHS,simplifiedFlattenedRHS);
         Node vp4 = nm->mkNode(Kind::EQUAL,res[1],simplifiedFlattenedRHS);
