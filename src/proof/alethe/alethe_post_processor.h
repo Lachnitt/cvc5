@@ -19,7 +19,6 @@
 #include "proof/alethe/alethe_node_converter.h"
 #include "proof/alethe/alethe_proof_rule.h"
 #include "proof/proof_node_updater.h"
-#include "theory/arith/arith_poly_norm.h"
 
 namespace cvc5::internal {
 
@@ -93,7 +92,7 @@ class AletheProofPostprocessCallback : protected EnvObj,
 
   /** Retrieve the saved error message, if any. */
   const std::string& getError();
-  theory::arith::PolyNorm mkPolyNorm(TNode n);
+
  private:
   /** The Alethe node converter */
   AletheNodeConverter& d_anc;

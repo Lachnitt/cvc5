@@ -29,7 +29,6 @@
 #include "proof/resolution_proofs_util.h"
 #include "rewriter/rewrite_proof_rule.h"
 #include "smt/env.h"
-#include "theory/arith/arith_poly_norm.h"
 #include "theory/builtin/proof_checker.h"
 #include "util/rational.h"
 
@@ -516,36 +515,18 @@ bool AletheProofPostprocessCallback::update(Node res,
                            new_args,
                            *cdp);
     }
-    case ProofRule::ARITH_POLY_NORM_REL:
+    // Both ARITH_POLY_NORM and EVALUATE, which are used by the Rare
+    // elaboration, are captured by the "rare_rewrite" rule.
     case ProofRule::ARITH_POLY_NORM:
     {
-      Assert(res.getNumChildren() >= 2);
-      if (res[0] == res[1]) {
-        return addAletheStep(
-            AletheRule::REFL,
-            res,
-            nm->mkNode(Kind::SEXPR, d_cl, res),
-            children,
-	    {},
-            *cdp);
-      }
-      else {
-        //theory::arith::PolyNorm pa = theory::arith::PolyNorm::mkPolyNorm(res[0]);
-        //Node n = theory::arith::PolyNorm::getPolyNorm(res[0]);
-        //std::cout << "res[0]" << res[0] << std::endl;
-        //std::cout << "n" << n << std::endl;
-	//auto x = mkPolyNorm(res[0]);
-	return addAletheStep(
-	  AletheRule::LIA_GENERIC,
-	  res,
-	  nm->mkNode(Kind::SEXPR, d_cl, res),
-	  children,
-	  {},
-	  *cdp);
-      }
-
+      return addAletheStep(
+          AletheRule::RARE_REWRITE,
+          res,
+          nm->mkNode(Kind::SEXPR, d_cl, res),
+          children,
+          {nm->mkRawSymbol("\"arith-poly-norm\"", nm->sExprType())},
+          *cdp);
     }
-    // EVALUATE, which is used by the RARE elaboration, is captured by the "rare_rewrite" rule.
     case ProofRule::EVALUATE:
     {
       return addAletheStep(AletheRule::RARE_REWRITE,

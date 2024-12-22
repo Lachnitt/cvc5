@@ -33,7 +33,6 @@ namespace arith {
  */
 class PolyNorm
 {
- friend class AlethePostProcess;
  public:
   /**
    * Add the monomial x*c to this polynomial.
