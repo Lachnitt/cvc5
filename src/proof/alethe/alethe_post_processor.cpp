@@ -29,6 +29,7 @@
 #include "proof/resolution_proofs_util.h"
 #include "rewriter/rewrite_proof_rule.h"
 #include "smt/env.h"
+#include "theory/arith/arith_poly_norm.h"
 #include "theory/builtin/proof_checker.h"
 #include "util/rational.h"
 
@@ -92,6 +93,138 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
   return rule == AletheRule::RESOLUTION_OR || rule == AletheRule::REORDERING
          || rule == AletheRule::CONTRACTION;
 }
+
+theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n)
+{
+  Rational one(1);
+  Node null;
+  std::unordered_map<TNode, theory::arith::PolyNorm> visited;
+  std::unordered_map<TNode, theory::arith::PolyNorm>::iterator it;
+  std::vector<TNode> visit;
+  TNode cur;
+  visit.push_back(n);
+  do
+  {
+    cur = visit.back();
+    it = visited.find(cur);
+    Kind k = cur.getKind();
+    if (it == visited.end())
+    {
+      if (k == Kind::CONST_RATIONAL || k == Kind::CONST_INTEGER)
+      {
+        Rational r = cur.getConst<Rational>();
+        visited[cur].addMonomial(null, r);
+        visit.pop_back();
+        continue;
+      }
+      /*else if (k == Kind::CONST_BITVECTOR)
+      {
+        // The bitwidth does not matter here, since the logic for normalizing
+        // polynomials considers the semantics of overflow.
+        BitVector bv = cur.getConst<BitVector>();
+        visited[cur].addMonomial(null, Rational(bv.getValue()));
+        visit.pop_back();
+        continue;
+      }*/
+      else if (k == Kind::ADD || k == Kind::SUB || k == Kind::NEG
+               || k == Kind::MULT || k == Kind::NONLINEAR_MULT
+               || k == Kind::TO_REAL || k == Kind::BITVECTOR_ADD
+               || k == Kind::BITVECTOR_SUB || k == Kind::BITVECTOR_NEG
+               || k == Kind::BITVECTOR_MULT)
+      {
+        visited[cur] = theory::arith::PolyNorm();
+        for (const Node& cn : cur)
+        {
+          visit.push_back(cn);
+        }
+        continue;
+      }
+      else if (k == Kind::DIVISION || k == Kind::DIVISION_TOTAL)
+      {
+        // only division by non-zero constant is supported
+        if (cur[1].isConst() && cur[1].getConst<Rational>().sgn() != 0)
+        {
+          visited[cur] = theory::arith::PolyNorm();
+          visit.push_back(cur[0]);
+          continue;
+        }
+      }
+      // it is a leaf
+      visited[cur].addMonomial(cur, one);
+      visit.pop_back();
+      continue;
+    }
+    visit.pop_back();
+    if (it->second.empty())
+    {
+      theory::arith::PolyNorm& ret = visited[cur];
+      switch (k)
+      {
+        case Kind::ADD:
+        case Kind::SUB:
+        case Kind::NEG:
+        case Kind::MULT:
+        case Kind::NONLINEAR_MULT:
+        case Kind::TO_REAL:
+        case Kind::BITVECTOR_ADD:
+        case Kind::BITVECTOR_SUB:
+        case Kind::BITVECTOR_NEG:
+        case Kind::BITVECTOR_MULT:
+          for (size_t i = 0, nchild = cur.getNumChildren(); i < nchild; i++)
+          {
+            it = visited.find(cur[i]);
+            Assert(it != visited.end());
+            TypeNode n;
+	    ret.toNode(n);
+	    std::cout << "Add a step showing ret: "  << std::endl;
+for(const auto& elem : ret.d_polyNorm)
+{
+   std::cout << elem.first << " " <<  "\n";
+}
+	    //std::cout << "Minus " << it->second << std::endl;
+            if (((k == Kind::SUB || k == Kind::BITVECTOR_SUB) && i == 1) || k == Kind::NEG
+                || k == Kind::BITVECTOR_NEG)
+            {
+              ret.subtract(it->second);
+            }
+            else if (i > 0
+                     && (k == Kind::MULT || k == Kind::NONLINEAR_MULT
+                         || k == Kind::BITVECTOR_MULT))
+            {
+              ret.multiply(it->second);
+            }
+            else
+            {
+              ret.add(it->second);
+            }
+          }
+          break;
+        case Kind::DIVISION:
+        case Kind::DIVISION_TOTAL:
+        {
+          it = visited.find(cur[0]);
+          Assert(it != visited.end());
+          ret.add(it->second);
+          Assert(cur[1].isConst());
+          // multiply by inverse
+          Rational invc = cur[1].getConst<Rational>().inverse();
+          ret.multiplyMonomial(TNode::null(), invc);
+        }
+        break;
+        case Kind::CONST_RATIONAL:
+        case Kind::CONST_INTEGER:
+        case Kind::CONST_BITVECTOR:
+          // ignore, this is the case of a repeated zero, since we check for
+          // empty of the polynomial above.
+          break;
+        default: Unhandled() << "Unhandled polynomial operation " << cur; break;
+      }
+    }
+  } while (!visit.empty());
+  Assert(visited.find(n) != visited.end());
+  return visited[n];
+}
+
 
 bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     Node res,
@@ -515,18 +648,36 @@ bool AletheProofPostprocessCallback::update(Node res,
                            new_args,
                            *cdp);
     }
-    // Both ARITH_POLY_NORM and EVALUATE, which are used by the Rare
-    // elaboration, are captured by the "rare_rewrite" rule.
+    case ProofRule::ARITH_POLY_NORM_REL:
     case ProofRule::ARITH_POLY_NORM:
     {
-      return addAletheStep(
-          AletheRule::RARE_REWRITE,
-          res,
-          nm->mkNode(Kind::SEXPR, d_cl, res),
-          children,
-          {nm->mkRawSymbol("\"arith-poly-norm\"", nm->sExprType())},
-          *cdp);
+      Assert(res.getNumChildren() >= 2);
+      if (res[0] == res[1]) {
+        return addAletheStep(
+            AletheRule::REFL,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+      }
+      else {
+        //theory::arith::PolyNorm pa = theory::arith::PolyNorm::mkPolyNorm(res[0]);
+        //Node n = theory::arith::PolyNorm::getPolyNorm(res[0]);
+        //std::cout << "res[0]" << res[0] << std::endl;
+        //std::cout << "n" << n << std::endl;
+	//auto x = mkPolyNorm(res[0]);
+	return addAletheStep(
+	  AletheRule::LIA_GENERIC,
+	  res,
+	  nm->mkNode(Kind::SEXPR, d_cl, res),
+	  children,
+	  {},
+	  *cdp);
+      }
+
     }
+    // EVALUATE, which is used by the RARE elaboration, is captured by the "rare_rewrite" rule.
     case ProofRule::EVALUATE:
     {
       return addAletheStep(AletheRule::RARE_REWRITE,
