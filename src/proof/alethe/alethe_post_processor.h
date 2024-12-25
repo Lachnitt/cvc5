@@ -93,7 +93,8 @@ class AletheProofPostprocessCallback : protected EnvObj,
 
   /** Retrieve the saved error message, if any. */
   const std::string& getError();
-  theory::arith::PolyNorm mkPolyNorm(TNode n);
+  theory::arith::PolyNorm mkPolyNorm(TNode n, const TypeNode &arith_type, CDProof* cdp);
+  Node mkNodeFromPolyNorm(theory::arith::PolyNorm ret);
  private:
   /** The Alethe node converter */
   AletheNodeConverter& d_anc;
