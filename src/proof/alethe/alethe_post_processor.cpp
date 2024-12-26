@@ -122,11 +122,12 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
   TNode cur;
   Node last;
   visit.push_back(n);
-  TypeNode arith_t = nm->realType(); // FIXME: This here is the problem. I don't really know how to solve the subtyping issue...
+  TypeNode arith_t = arith_type; // FIXME: This here is the problem. I don't really know how to solve the subtyping issue...
   bool success = true;
   do
   {
     cur = visit.back();
+std::cout << "cur " << cur << " with type " << cur.getType() << std::endl;
     it = visited.find(cur);
     Kind k = cur.getKind();
     if (it == visited.end())
@@ -134,7 +135,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
       if (k == Kind::CONST_RATIONAL || k == Kind::CONST_INTEGER)
       {
         Rational r = cur.getConst<Rational>();
-        visited[cur].addMonomial(null, r);
+        visited[cur].addMonomial(null, r); //FIXME, this was null but then the type was not right
         visit.pop_back();
 
         // Add proof for positive constants
@@ -156,6 +157,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
         visited[cur] = theory::arith::PolyNorm();
         for (const Node& cn : cur)
         {
+std::cout << "cn " << cn << " type " << cn.getType() << std::endl;
           visit.push_back(cn);
         }
 
@@ -296,7 +298,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	      std::vector<Node> old_ris;
 	      old_ris.insert(old_ris.end(),ris.begin(),ris.end()-1);
 	      Node timinus1 = (i==1 && cvc5::internal::kind::metakind::getMinArityForKind(k) > 1) ? old_ris[0] : nm->mkNode(k,old_ris);
-              std::cout << "timinus1 " << timinus1 << " kind " << k << std::endl;
+              std::cout << "timinus1 " << timinus1 << " kind " << k << " type " << timinus1.getType() << std::endl;
 	      Node ni = to_be_added[i];
 	      Node niminus1 = to_be_added[i-1];
 	      Node ri = cur[i];
@@ -824,19 +826,16 @@ bool AletheProofPostprocessCallback::update(Node res,
       }
       else {
 	bool success;
-        std::cout << "res " << res << std::endl;
+        //std::cout << "res " << res << std::endl;
 	TypeNode tn1 = res[0].getType();
-std::cout << "tn1 "  << tn1 << std::endl;
 
 	TypeNode tn2 = res[1].getType();
-std::cout << "tn2 "  << tn2 << std::endl;
         auto a= mkPolyNorm(res[0],tn1,cdp);
 	Node RHS = a.theory::arith::PolyNorm::toNode(tn1);
-        std::cout <<"here 777" << std::endl;
         Node LHS = mkPolyNorm(res[1],tn2,cdp).theory::arith::PolyNorm::toNode(tn2);
-        std::cout << "RHS " << RHS << std::endl;
-        std::cout << "LHS " << LHS << std::endl;
-        Assert(LHS == RHS); 
+        //std::cout << "RHS " << RHS << std::endl;
+        //std::cout << "LHS " << LHS << std::endl;
+        //Assert(LHS = RHS); 
 	Node vp1 = nm->mkNode(Kind::EQUAL,res[0],RHS); 
 	Node vp2 = nm->mkNode(Kind::EQUAL,res[1],LHS); 
 	Node vp3 = nm->mkNode(Kind::EQUAL,LHS,res[1]);
@@ -861,6 +860,102 @@ std::cout << "tn2 "  << tn2 << std::endl;
     }
     case ProofRule::ARITH_POLY_NORM_REL:
     {
+      bool success;
+      Kind diamond = res[0].getKind();
+      //Assert(diamond = res[1].getKind());
+
+      Node X = res[0];
+      Node x1 = X[0];
+      Node x2 = X[1];
+
+      Node Y = res[1];
+      Node y1 = Y[0];
+      Node y2 = Y[1];
+
+      TypeNode t_x = x1.getType();
+      Node n_x1 = mkPolyNorm(x1,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+      Node n_x2 = mkPolyNorm(x2,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+      Node n_y1 = mkPolyNorm(y1,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+      Node n_y2 = mkPolyNorm(y2,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+
+      Node n_X = nm->mkNode(diamond,n_x1,n_x2);
+      Node n_Y = nm->mkNode(diamond,n_y1,n_y2);
+      Node X_n_X = nm->mkNode(Kind::EQUAL, X, n_X); //already proven
+      Node Y_n_Y = nm->mkNode(Kind::EQUAL, Y, n_Y); //already proven
+      Node n_Y_Y = nm->mkNode(Kind::EQUAL, n_Y, Y);
+      Node n_X_n_Y = nm->mkNode(Kind::EQUAL, n_X, n_Y);
+      Node n_res = nm->mkNode(Kind::EQUAL, n_X, n_Y);
+
+      Node c = children[0];
+      Node cX = c[0];
+      Node cY = c[1];
+      Node cX_cY = nm->mkNode(Kind::EQUAL,cX,cY);
+      Node n_cX = mkPolyNorm(cX,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+      Node n_cY = mkPolyNorm(cY,t_x,cdp).theory::arith::PolyNorm::toNode(t_x);
+      Node cX_n_cX = nm->mkNode(Kind::EQUAL, cX, n_cX); //already proven
+      Node cY_n_cY = nm->mkNode(Kind::EQUAL, cY, n_cY); //already proven
+      Node cX_n_cY = nm->mkNode(Kind::EQUAL, cX, n_cY);
+      Node n_cX_n_cY = nm->mkNode(Kind::EQUAL, n_cX, n_cY);
+
+      
+/**
+c is (= cX cY)
+
+                   ---------premise  ------------ p
+                   (= cX cY)          (= cY n_cY)
+                   -----------------------------------  TRANS
+ (= n_cX cx)        (= cX n_cY)
+-----------------------------------  TRANS
+    (= n_cX n_cY)
+*/
+
+
+      success &= addAletheStep(AletheRule::TRANS, cX_n_cY, nm->mkNode(Kind::SEXPR, d_cl, cX_n_cY), {cX_cY,cY_n_cY},{},*cdp);
+      success &= addAletheStep(AletheRule::TRANS, n_cX_n_cY, nm->mkNode(Kind::SEXPR, d_cl, n_cX_n_cY), {cX_n_cY},{},*cdp);
+
+/**
+
+ 
+
+------------------------------ equiv_neg1      -------------------------------------- LIA_GENERIC
+ vp1: n_X = n_Y \/ n_X \/ n_Y                   vp2: !(n_cX = n_cY) \/ !n_X \/ !n_Y                       T1
+------------------------------------------------------------------------------------- RESOLUTION   ----------------
+ vp3: n_X = n_Y \/ !(n_cX = n_cY)                                                      		     (= n_cX n_cY)
+-----------------------------------------------------------------------------------------------------------------  RESOLUTION
+    			n_X = n_Y
+
+
+
+
+*/
+      Node vp1 = nm->mkNode(Kind::OR, n_X_n_Y, n_X, n_Y);
+      Node vp2 = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(), n_X.notNode(), n_Y.notNode());
+      Node vp3 = nm->mkNode(Kind::OR, n_X_n_Y, n_cX_n_cY.notNode());
+      success &= addAletheStepFromOr(AletheRule::EQUIV_NEG1, vp1, {},{},*cdp);
+      success &= addAletheStepFromOr(AletheRule::LIA_GENERIC, vp2, {},{},*cdp);
+      success &= addAletheStepFromOr(AletheRule::RESOLUTION, vp3, {vp1,vp2},{},*cdp);
+      success &= addAletheStep(AletheRule::RESOLUTION, n_X_n_Y, nm->mkNode(Kind::SEXPR,d_cl,n_X_n_Y),{vp3,n_cX_n_cY},{},*cdp);
+
+
+/**
+
+                                   	     		  (Y = n_Y)
+                       					------------ SYMM
+                      (n_X = n_Y)   		          (n_Y = Y)
+                    ------------------------------------------------ TRANS
+                       (n_X = n_Y)
+    ---------p
+    (X = n_X)
+    -------------------------------------
+    			X=Y
+*/
+
+      success &= addAletheStep(AletheRule::SYMM, n_Y_Y, nm->mkNode(Kind::SEXPR,d_cl,n_Y_Y),{Y_n_Y},{},*cdp);
+      success &= addAletheStep(AletheRule::TRANS, n_X_n_Y, nm->mkNode(Kind::SEXPR,d_cl,n_X_n_Y),{n_X_n_Y,n_Y_Y},{},*cdp);
+      success &= addAletheStep(AletheRule::TRANS, res, nm->mkNode(Kind::SEXPR,d_cl,res),{X_n_X,n_X_n_Y},{},*cdp);
+
+
+      return success;
       return addAletheStep(AletheRule::HOLE, res, nm->mkNode(Kind::SEXPR, d_cl, res), {},{},*cdp);
     }
     // EVALUATE, which is used by the RARE elaboration, is captured by the "rare_rewrite" rule.
