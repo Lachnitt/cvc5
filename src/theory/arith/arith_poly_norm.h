@@ -23,6 +23,10 @@
 #include "expr/node.h"
 #include "util/rational.h"
 
+namespace cvc5::internal::proof{
+class AletheProofPostprocessCallback;
+}
+
 namespace cvc5::internal {
 namespace theory {
 namespace arith {
@@ -33,7 +37,7 @@ namespace arith {
  */
 class PolyNorm
 {
- friend class AlethePostProcess;
+ friend class ::cvc5::internal::proof::AletheProofPostprocessCallback;
  public:
   /**
    * Add the monomial x*c to this polynomial.
