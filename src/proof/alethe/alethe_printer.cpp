@@ -359,6 +359,7 @@ void AletheProofPrinter::printInternal(std::ostream& out,
   std::string stepId = prefix + "t" + std::to_string(id++);
   printStep(out, stepId, arule, args, pfChildren);
   d_pfMap[pfn.get()] = stepId;
+  Trace("alethe-printer") << "end\n";
 }
 
 }  // namespace proof
