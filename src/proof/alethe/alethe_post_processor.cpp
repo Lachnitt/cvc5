@@ -163,7 +163,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	if ((k == Kind::SUB && cur.getNumChildren() == 1) || k == Kind::NEG){
 	  Node cur2 = cur[0];
 	  if (cur2.getKind() == Kind::CONST_RATIONAL || cur2.getKind() == Kind::CONST_INTEGER){
-            Node r = nm->mkConstReal(cur2.getConst<Rational>());
+            Node r = nm->mkNode(k,nm->mkConstRealOrInt(cur2.getConst<Rational>()));
             Node refl_step = nm->mkNode(Kind::EQUAL, r, r);
 	    success &= addAletheStep(AletheRule::REFL,
                          refl_step,
