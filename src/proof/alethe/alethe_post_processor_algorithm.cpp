@@ -75,7 +75,6 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
   }
   cache.insert({term,result});
   return result;
-  Assert(False);
 }
 
 //Only works for And and OR for now
