@@ -134,11 +134,11 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
       if (k == Kind::CONST_RATIONAL || k == Kind::CONST_INTEGER)
       {
         Rational r = cur.getConst<Rational>();
-        visited[cur].addMonomial(null, r); //FIXME, this was null but then the type was not right
+        visited[cur].addMonomial(null, r);
         visit.pop_back();
 
         // Add proof for positive constants
-	Node const_real = nm->mkConstReal(r);
+	Node const_real = nm->mkConstRealOrInt(r);
 	Node refl_step = nm->mkNode(Kind::EQUAL,const_real,const_real);
 	success &= addAletheStep(AletheRule::REFL,
                          refl_step,
@@ -291,7 +291,19 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	    // vp7                (= v_i pi)                     by k_proof_simplify
 	    // vp8                (= t_i p_i)                    by trans vp6 vp7
             ris.push_back(cur[i]);
-	    if (i != 0){
+	    if (i == 0 && k == Kind::NEG){
+	      Node ti = nm->mkNode(k,ris);
+	      Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
+                success &= addAletheStep(AletheRule::HOLE,//TODO
+                         vp1,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                         {},
+                         {},
+                         *cdp);
+	
+
+	    }
+	    if (i != 0 ){
 	      Node ti = nm->mkNode(k,ris);
 	      std::vector<Node> old_ris;
 	      old_ris.insert(old_ris.end(),ris.begin(),ris.end()-1);
@@ -309,54 +321,112 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	      Node ui = nm->mkNode(k, timinus1, ri);
 	      Node vi = nm->mkNode(k, piminus1, ni);
 	      Node vp3 = nm->mkNode(Kind::EQUAL, ui, ti);
+	      bool vp3_refl = (ui == ti);
 	      Node vp4 = nm->mkNode(Kind::EQUAL, ti, ui);
+	      bool vp4_refl = (ti == ui);
 	      Node vp5 = nm->mkNode(Kind::EQUAL, ui, vi);
+	      bool vp5_refl = (vi == ui);
 	      Node vp6 = nm->mkNode(Kind::EQUAL, ti, vi);
+	      bool vp6_refl = (vi == ti);
 	      Node vp7 = nm->mkNode(Kind::EQUAL, vi, pi);
+	      bool vp7_refl = (vi == pi);
 	      Node vp8 = nm->mkNode(Kind::EQUAL, ti, pi);
+	      bool vp8_refl = (ti == pi);
 
-	      success &=
-		 addAletheStep(AletheRule::HOLE,
-                         vp3,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp3),
+              if (vp8_refl){
+                success &= addAletheStep(AletheRule::REFL,
+                         vp8,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp8),
                          {},
                          {},
-                         *cdp)
-		&&
-	       addAletheStep(AletheRule::SYMM,
+                         *cdp);
+	      }
+	      else {
+                if (vp6_refl){
+                    success &= addAletheStep(AletheRule::REFL,
+                         vp6,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp6),
+                         {},
+                         {},
+                         *cdp);
+		 }
+		 else {
+	
+
+		   		   if (vp4_refl) {
+		      success &= addAletheStep(AletheRule::REFL,
+                         vp4,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp4),
+                         {},
+                         {},
+                         *cdp);
+		   }
+		   else{
+			  if (vp3_refl) {
+			      success &= addAletheStep(AletheRule::REFL,
+				 vp3,
+				 nm->mkNode(Kind::SEXPR, d_cl, vp3),
+				 {},
+				 {},
+				 *cdp);
+			   }
+			   else{
+				success &=
+			   addAletheStep(AletheRule::HOLE,
+				 vp3,
+				 nm->mkNode(Kind::SEXPR, d_cl, vp3),
+				 {},
+				 {},
+				 *cdp);
+			   }
+
+
+		     success &= addAletheStep(AletheRule::SYMM,
                          vp4,
                          nm->mkNode(Kind::SEXPR, d_cl, vp4),
                          {vp3},
                          {},
-                         *cdp)
-		&&
-	       addAletheStep(AletheRule::CONG,
+                         *cdp);
+		   }
+	           success &= addAletheStep(AletheRule::CONG,
                          vp5,
                          nm->mkNode(Kind::SEXPR, d_cl, vp5),
                          {vp1,vp2},
                          {},
                          *cdp)
-		&&
-	       addAletheStep(AletheRule::TRANS,
+		   &&
+	           addAletheStep(AletheRule::TRANS,
                          vp6,
                          nm->mkNode(Kind::SEXPR, d_cl, vp6),
                          {vp4,vp5},
                          {},
-                         *cdp)
-		&&
-	       addAletheStep(AletheRule::HOLE,
+                         *cdp);
+		 }
+	         if (vp7_refl){
+	           success &= addAletheStep(AletheRule::REFL,
                          vp7,
                          nm->mkNode(Kind::SEXPR, d_cl, vp7),
                          {},
                          {},
-                         *cdp)
-		&&
-	       addAletheStep(AletheRule::TRANS,
+                         *cdp);
+		}
+		else{
+                   success &= addAletheStep(AletheRule::HOLE,
+                         vp7,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp7),
+                         {},
+                         {},
+                         *cdp);
+                }
+		success &= addAletheStep(AletheRule::TRANS,
                          vp8,
                          nm->mkNode(Kind::SEXPR, d_cl, vp8),
                          {vp6,vp7},
                          {},
                          *cdp);
+	     
+            }
+	    
 	    }
           }
           break;
@@ -828,14 +898,16 @@ bool AletheProofPostprocessCallback::update(Node res,
 
 	TypeNode tn2 = res[1].getType();
         auto a= mkPolyNorm(res[0],tn1,cdp);
-	Node RHS = a.theory::arith::PolyNorm::toNode(tn1);
-        Node LHS = mkPolyNorm(res[1],tn2,cdp).theory::arith::PolyNorm::toNode(tn2);
+	//std::cout << "ready res[0]" << std::endl;
+	Node LHS = a.theory::arith::PolyNorm::toNode(tn1);
+        Node RHS = mkPolyNorm(res[1],tn2,cdp).theory::arith::PolyNorm::toNode(tn2);
+	//std::cout << "ready res[1]" << std::endl;
         //std::cout << "RHS " << RHS << std::endl;
         //std::cout << "LHS " << LHS << std::endl;
         //Assert(LHS = RHS); 
-	Node vp1 = nm->mkNode(Kind::EQUAL,res[0],RHS); 
-	Node vp2 = nm->mkNode(Kind::EQUAL,res[1],LHS); 
-	Node vp3 = nm->mkNode(Kind::EQUAL,LHS,res[1]);
+	Node vp1 = nm->mkNode(Kind::EQUAL,res[0],LHS); 
+	Node vp2 = nm->mkNode(Kind::EQUAL,res[1],RHS); 
+	Node vp3 = nm->mkNode(Kind::EQUAL,RHS,res[1]);
 	if (vp2 != vp3){ 
 	  addAletheStep(
 	    AletheRule::SYMM,
@@ -937,7 +1009,7 @@ if (n_cX != cX){
       success &= addAletheStepFromOr(AletheRule::EQUIV_NEG1, vp1, {},{},*cdp);
       success &= addAletheStepFromOr(AletheRule::LIA_GENERIC, vp2, {},{},*cdp);
       success &= addAletheStepFromOr(AletheRule::RESOLUTION, vp3, {vp1,vp2},{},*cdp);
-      success &= addAletheStep(AletheRule::RESOLUTION, n_X_n_Y, nm->mkNode(Kind::SEXPR,d_cl,n_X_n_Y),{vp3,n_cX_n_cY},{},*cdp);
+      success &= addAletheStep(AletheRule::RESOLUTION_OR, n_X_n_Y, nm->mkNode(Kind::SEXPR,d_cl,n_X_n_Y),{vp3,n_cX_n_cY},{},*cdp);
 
 
 /**
