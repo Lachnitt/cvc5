@@ -275,7 +275,19 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	    to_be_added.push_back(cur_polynom);
 	  }
 	  std::vector<Node> ris = {};
-	  // The original form is cur = (k r_1 ... r_n)
+	            if (k == Kind::TO_REAL || (k == Kind::SUB && cur.getNumChildren() == 1) || k == Kind::NEG){
+	      Node ti = nm->mkNode(k,cur[0]);
+	      Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
+                success &= addAletheStep(AletheRule::HOLE,//TODO
+                         vp1,
+                         nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                         {},
+                         {},
+                         *cdp);
+	
+
+	    }
+else{// The original form is cur = (k r_1 ... r_n)
 
 	  // For each i:
 	  //   Let t_i = (k r_1 ... r_i) and p_i be the normalized form of t_i.
@@ -298,34 +310,10 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	  // vp6                (= t_i v_i)                    by trans with vp4 vp5
 	  // vp7                (= v_i pi)                     by k_proof_simplify
 	  // vp8                (= t_i p_i)                    by trans vp6 vp7
- 
+
           for (int i = 0; i < cur.getNumChildren(); i++){
 	               ris.push_back(cur[i]);
-	    if ( k==Kind::TO_REAL){
-	      Node ti = nm->mkNode(k,ris);
-	      Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
-                success &= addAletheStep(AletheRule::HOLE,//TODO
-                         vp1,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp1),
-                         {},
-                         {},
-                         *cdp);
-	
-
-	    }
-	    else if (i==0 && ((k == Kind::SUB && cur.getNumChildren() == 1) || k == Kind::NEG)){
-		   Node ti = nm->mkNode(k,ris);
-	      Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
-                success &= addAletheStep(AletheRule::HOLE,//TODO
-                         vp1,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp1),
-                         {},
-                         {},
-                         *cdp);
-	
-
-	    }
-	    if (i != 0 ){
+	    	    if (i != 0 ){
 	     Trace("alethe-proof") << "... in i not 1" << k << " \n";
 	      Node ti = nm->mkNode(k,ris);
 	      std::vector<Node> old_ris;
@@ -456,7 +444,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
             }
 	    
 	    }
-          }
+          }}
           break;
 	}
         case Kind::DIVISION:
