@@ -275,87 +275,101 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	    to_be_added.push_back(cur_polynom);
 	  }
 	  std::vector<Node> ris = {};
-	            if (k == Kind::TO_REAL || (k == Kind::SUB && cur.getNumChildren() == 1) || k == Kind::NEG){
-	      Node ti = nm->mkNode(k,cur[0]);
-	      Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
-                success &= addAletheStep(AletheRule::HOLE,//TODO
-                         vp1,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp1),
-                         {},
-                         {},
-                         *cdp);
-	
+          if (k == Kind::TO_REAL
+              || (k == Kind::SUB && cur.getNumChildren() == 1)
+              || k == Kind::NEG)
+          {
+            Node ti = nm->mkNode(k, cur[0]);
+            Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
+            success &= addAletheStep(AletheRule::HOLE,  // TODO
+                                     vp1,
+                                     nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                                     {},
+                                     {},
+                                     *cdp);
+          }
+          else
+          {  // The original form is cur = (k r_1 ... r_n)
 
-	    }
-else{// The original form is cur = (k r_1 ... r_n)
+            // For each i:
+            //   Let t_i = (k r_1 ... r_i) and p_i be the normalized form of
+            //   t_i. Let n_i be the normalized form of r_
 
-	  // For each i:
-	  //   Let t_i = (k r_1 ... r_i) and p_i be the normalized form of t_i.
-	  //   Let n_i be the normalized form of r_
-	     
-	  // In round i:
-	  //   n_i gets merged to p_{i-1}, creating p_i 
-	  //   vp1           (= t_{i-1} p_{i-1})           already proven
-	  //   vp2           (= r_i n_i)                   already proven
+            // In round i:
+            //   n_i gets merged to p_{i-1}, creating p_i
+            //   vp1           (= t_{i-1} p_{i-1})           already proven
+            //   vp2           (= r_i n_i)                   already proven
 
-	  // I want a proof for (= t_i p_i)
+            // I want a proof for (= t_i p_i)
 
-	  // For i = 0
-	  // (= t_0 p_0) because t0 = r0 and p_0 = n0 the goal is (= r_0 n_0) which should be already proven
+            // For i = 0
+            // (= t_0 p_0) because t0 = r0 and p_0 = n0 the goal is (= r_0 n_0)
+            // which should be already proven
 
-	  // Let u_i = (k t_{i-1} r_i) and v_i =  (k p_{i-1} n_i)
-	  // vp3                (= u_i t_i)                    by hole
-	  // vp4                (= t_i u_i)                    by symm vp3
-	  // vp5                (= u_i v_i)                    by cong k with vp1 vp2
-	  // vp6                (= t_i v_i)                    by trans with vp4 vp5
-	  // vp7                (= v_i pi)                     by k_proof_simplify
-	  // vp8                (= t_i p_i)                    by trans vp6 vp7
+            // Let u_i = (k t_{i-1} r_i) and v_i =  (k p_{i-1} n_i)
+            // vp3                (= u_i t_i)                    by hole
+            // vp4                (= t_i u_i)                    by symm vp3
+            // vp5                (= u_i v_i)                    by cong k with
+            // vp1 vp2 vp6                (= t_i v_i)                    by
+            // trans with vp4 vp5 vp7                (= v_i pi) by
+            // k_proof_simplify vp8                (= t_i p_i) by trans vp6 vp7
 
-          for (int i = 0; i < cur.getNumChildren(); i++){
-	               ris.push_back(cur[i]);
-	    	    if (i != 0 ){
-	     Trace("alethe-proof") << "... in i not 1" << k << " \n";
-	      Node ti = nm->mkNode(k,ris);
-	      std::vector<Node> old_ris;
-	      old_ris.insert(old_ris.end(),ris.begin(),ris.end()-1);
-	      Node timinus1 = (i==1 && cvc5::internal::kind::metakind::getMinArityForKind(k) > 1) ? old_ris[0] : nm->mkNode(k,old_ris);
-	      Node ni = to_be_added[i];
-	      Node niminus1 = to_be_added[i-1];
-	      Node ri = cur[i];
-	      Node riminus1 = cur[i-1];
-	      Node pi = cumulative_normalized[i];
-	      Node piminus1 = cumulative_normalized[i-1];
- 
-	      Node vp1 = nm->mkNode(Kind::EQUAL, timinus1, piminus1);
-	      Node vp2 = nm->mkNode(Kind::EQUAL, ri, ni);
-	      //std::cout << "vp1 " << vp1 << " " << vp1.getType() << std::endl;
-	      //std::cout << "vp2 " << vp2 << " " << vp2.getType() << std::endl;
-            
-	      Node ui = nm->mkNode(k, timinus1, ri);
-	      Node vi = nm->mkNode(k, piminus1, ni);
-	      Node vp3 = nm->mkNode(Kind::EQUAL, ui, ti);
-	      bool vp3_refl = (ui == ti);
-	      Node vp4 = nm->mkNode(Kind::EQUAL, ti, ui);
-	      bool vp4_refl = (ti == ui);
-	      Node vp5 = nm->mkNode(Kind::EQUAL, ui, vi);
-	      bool vp5_refl = (vi == ui);
-	      Node vp6 = nm->mkNode(Kind::EQUAL, ti, vi);
-	      bool vp6_refl = (vi == ti);
-	      Node vp7 = nm->mkNode(Kind::EQUAL, vi, pi);
-	      bool vp7_refl = (vi == pi);
-	      Node vp8 = nm->mkNode(Kind::EQUAL, ti, pi);
-	      bool vp8_refl = (ti == pi);
+            for (int i = 0; i < cur.getNumChildren(); i++)
+            {
+              ris.push_back(cur[i]);
+              if (i != 0)
+              {
+                Trace("alethe-proof") << "... in i not 1" << k << " \n";
+                Node ti = nm->mkNode(k, ris);
+                std::vector<Node> old_ris;
+                old_ris.insert(old_ris.end(), ris.begin(), ris.end() - 1);
+                Node timinus1 =
+                    (i == 1
+                     && cvc5::internal::kind::metakind::getMinArityForKind(k)
+                            > 1)
+                        ? old_ris[0]
+                        : nm->mkNode(k, old_ris);
+                Node ni = to_be_added[i];
+                Node niminus1 = to_be_added[i - 1];
+                Node ri = cur[i];
+                Node riminus1 = cur[i - 1];
+                Node pi = cumulative_normalized[i];
+                Node piminus1 = cumulative_normalized[i - 1];
 
-              if (vp8_refl){
-                success &= addAletheStep(AletheRule::REFL,
-                         vp8,
-                         nm->mkNode(Kind::SEXPR, d_cl, vp8),
-                         {},
-                         {},
-                         *cdp);
-	      }
-	      else {
-                if (vp6_refl){
+                Node vp1 = nm->mkNode(Kind::EQUAL, timinus1, piminus1);
+                Node vp2 = nm->mkNode(Kind::EQUAL, ri, ni);
+                // std::cout << "vp1 " << vp1 << " " << vp1.getType() <<
+                // std::endl; std::cout << "vp2 " << vp2 << " " << vp2.getType()
+                // << std::endl;
+
+                Node ui = nm->mkNode(k, timinus1, ri);
+                Node vi = nm->mkNode(k, piminus1, ni);
+                Node vp3 = nm->mkNode(Kind::EQUAL, ui, ti);
+                bool vp3_refl = (ui == ti);
+                Node vp4 = nm->mkNode(Kind::EQUAL, ti, ui);
+                bool vp4_refl = (ti == ui);
+                Node vp5 = nm->mkNode(Kind::EQUAL, ui, vi);
+                bool vp5_refl = (vi == ui);
+                Node vp6 = nm->mkNode(Kind::EQUAL, ti, vi);
+                bool vp6_refl = (vi == ti);
+                Node vp7 = nm->mkNode(Kind::EQUAL, vi, pi);
+                bool vp7_refl = (vi == pi);
+                Node vp8 = nm->mkNode(Kind::EQUAL, ti, pi);
+                bool vp8_refl = (ti == pi);
+
+                if (vp8_refl)
+                {
+                  success &= addAletheStep(AletheRule::REFL,
+                                           vp8,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp8),
+                                           {},
+                                           {},
+                                           *cdp);
+                }
+                else
+                {
+                  if (vp6_refl)
+                  {
                     success &= addAletheStep(AletheRule::REFL,
                          vp6,
                          nm->mkNode(Kind::SEXPR, d_cl, vp6),
@@ -442,9 +456,9 @@ else{// The original form is cur = (k r_1 ... r_n)
 	     
               Trace("alethe-proof") << "... mkPolyNorm finished proof that " << vp8 << " \n";
             }
-	    
-	    }
-          }}
+              }
+            }
+          }
           break;
 	}
         case Kind::DIVISION:

@@ -257,7 +257,8 @@ void AletheProofPrinter::printInternal(std::ostream& out,
   const std::vector<Node>& args = pfn->getArguments();
   const std::vector<std::shared_ptr<ProofNode>>& pfChildren =
       pfn->getChildren();
-  AlwaysAssert(args.size() >= 3) << "Node " << pfn->getResult() << " was not properly translated: " << args;
+  AlwaysAssert(args.size() >= 3) << "Node " << pfn->getResult()
+                                 << " was not properly translated: " << args;
   // Get the alethe proof rule
   AletheRule arule = getAletheRule(args[0]);
   Trace("alethe-printer") << "... print step " << arule << " : " << args[2]
