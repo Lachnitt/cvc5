@@ -51,6 +51,8 @@ class PolyNorm
   void multiplyMonomial(TNode x, const Rational& c);
   /** Add polynomial p to this one. */
   void add(const PolyNorm& p);
+  void to_real(const PolyNorm& p);
+
   /** Subtract polynomial p from this one. */
   void subtract(const PolyNorm& p);
   /** Multiply this polynomial by p */
