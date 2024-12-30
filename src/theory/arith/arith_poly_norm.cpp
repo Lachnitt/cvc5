@@ -124,11 +124,11 @@ void PolyNorm::to_real(const PolyNorm& p)
   NodeManager* nm = NodeManager::currentNM();
   for (const std::pair<const Node, Rational>& m : p.d_polyNorm)
   {
-	Node r = nm->mkConstReal(m.second);
-        Rational ra = r.getConst<Rational>();
-	d_polyNorm[nm->mkNode(Kind::TO_REAL,m.first)] = ra;}
+    Node r = nm->mkConstReal(m.second);
+    Rational ra = r.getConst<Rational>();
+    d_polyNorm[nm->mkNode(Kind::TO_REAL, m.first)] = ra;
+  }
 }
-
 
 void PolyNorm::subtract(const PolyNorm& p)
 {
