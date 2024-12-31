@@ -243,7 +243,6 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
           std::vector<Node> cumulative_normalized;
           std::vector<Node> to_be_added;
 
-          Node last_polynom;
           for (size_t i = 0, nchild = cur.getNumChildren(); i < nchild; i++)
           {
             it = visited.find(cur[i]);
@@ -297,10 +296,11 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
           {
             Node ti = nm->mkNode(k, cur[0]);
             Node vp1 = nm->mkNode(Kind::EQUAL, ti, cumulative_normalized[0]);
-            success &= addAletheStep(AletheRule::HOLE,  // TODO
+            Node prems = nm->mkNode(Kind::EQUAL, cur[0], to_be_added[0]);
+            success &= addAletheStep(AletheRule::CONG,  // TODO
                                      vp1,
                                      nm->mkNode(Kind::SEXPR, d_cl, vp1),
-                                     {},
+                                     {prems},
                                      {},
                                      *cdp);
           }
@@ -323,11 +323,11 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
             // which should be already proven
 
             // Let u_i = (k t_{i-1} r_i) and v_i =  (k p_{i-1} n_i)
-            // vp3                (= u_i t_i)                    by hole
-            // vp4                (= t_i u_i)                    by symm vp3
-            // vp5                (= u_i v_i)                    by cong k with
-            // vp1 vp2 vp6                (= t_i v_i)                    by
-            // trans with vp4 vp5 vp7                (= v_i pi) by
+            // vp3   (= u_i t_i)   by hole
+            // vp4   (= t_i u_i)   by symm vp3
+            // vp5   (= u_i v_i)   by cong k with vp1 vp2 
+	    // vp6   (= t_i v_i)   by trans with vp4 vp5 
+	    // vp7   (= v_i pi)    by
             // k_proof_simplify vp8                (= t_i p_i) by trans vp6 vp7
 
             for (int i = 0; i < cur.getNumChildren(); i++)
@@ -565,6 +565,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     }
     default: break;
   }
+std::cout << "di " << di << std::endl;
   return addAletheStep(AletheRule::HOLE,
                        res,
                        nm->mkNode(Kind::SEXPR, d_cl, res),
