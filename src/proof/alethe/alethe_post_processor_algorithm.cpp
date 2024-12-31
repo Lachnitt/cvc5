@@ -110,7 +110,7 @@ Node applyNarySimplify(Node res){
   Node simplifiedFlattenedRes = (new_children.size() == 0 ? nt : (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
-  return res;
+  return simplifiedFlattenedRes;
 }
 
 }  // namespace proof
