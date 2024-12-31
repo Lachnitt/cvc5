@@ -563,6 +563,22 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            new_args,
                            *cdp);
     }
+    case ProofRewriteRule::ARITH_DIV_BY_CONST_ELIM:
+    {
+      Assert(res.getNumChildren() == 2);
+      Assert(res[0].getNumChildren() == 2);
+
+      Node rule = nm->mkRawSymbol("arith-div-by-const-elim", nm->sExprType());
+      new_args.push_back(rule);
+      new_args.push_back(res[0][0]);
+      new_args.push_back(res[0][1]);
+      return addAletheStep(AletheRule::RARE_REWRITE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           new_args,
+                           *cdp);
+    }
     default: break;
   }
 std::cout << "di " << di << std::endl;
