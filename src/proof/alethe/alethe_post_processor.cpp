@@ -568,7 +568,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
       Assert(res.getNumChildren() == 2);
       Assert(res[0].getNumChildren() == 2);
 
-      Node rule = nm->mkRawSymbol("arith-div-by-const-elim", nm->sExprType());
+      Node rule = nm->mkRawSymbol("\"arith-div-by-const-elim\"", nm->sExprType());
       new_args.push_back(rule);
       new_args.push_back(res[0][0]);
       new_args.push_back(res[0][1]);
