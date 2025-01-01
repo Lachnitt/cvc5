@@ -79,10 +79,12 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
 
 //Only works for And and OR for now
 Node applyNarySimplify(Node res){ 
+  Trace("alethe-proof") << "simplifying " << res << "\n";
+  Kind k = res.getKind();
+  Assert(k == Kind::AND || k == Kind::OR);
   NodeManager* nm = NodeManager::currentNM();
   std::vector<Node> new_children;
   std::vector<Node> without_negation;
-  Kind k = res.getKind();
   Node inverse = (k==Kind::AND ? nm->mkConst(false) : nm->mkConst(true));
   TypeNode atn = res.getType();
   Node nt = expr::getNullTerminator(k, atn);
@@ -110,6 +112,7 @@ Node applyNarySimplify(Node res){
   Node simplifiedFlattenedRes = (new_children.size() == 0 ? nt : (new_children.size() == 1
            ? new_children[0]
            : NodeManager::currentNM()->mkNode(k, new_children)));
+  Trace("alethe-proof") << "finished simplifying, result: " << simplifiedFlattenedRes << "\n";
   return simplifiedFlattenedRes;
 }
 
