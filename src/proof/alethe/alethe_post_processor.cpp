@@ -1368,7 +1368,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 			 {},
 			 *cdp);
         Node child_LHS = vp1;         
-       	if (!LHS_is_atom) {
+       	if (flattenedLHS.getKind() == Kind::OR || flattenedLHS.getKind() == Kind::AND) {
 	  Node simplifiedFlattenedLHS = applyNarySimplify(flattenedLHS);
           Trace("alethe-proof") << "Flattened and simplified LHS " << simplifiedFlattenedLHS << std::endl;
           AletheRule simplify_rule = (k_LHS == Kind::AND) ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY;
@@ -1401,7 +1401,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 			 *cdp);
 
         Node child_RHS = vp4;         
-        if (!RHS_is_atom) {
+       	if (flattenedRHS.getKind() == Kind::OR || flattenedRHS.getKind() == Kind::AND) {
 	  Node simplifiedFlattenedRHS = applyNarySimplify(flattenedRHS);
           Trace("alethe-proof") << "Flattened and simplified RHS " << simplifiedFlattenedRHS << std::endl; 
           AletheRule simplify_rule = (k_RHS == Kind::AND) ? AletheRule::AND_SIMPLIFY : AletheRule::OR_SIMPLIFY;
