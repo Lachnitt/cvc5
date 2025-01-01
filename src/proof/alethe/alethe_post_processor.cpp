@@ -579,9 +579,85 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            new_args,
                            *cdp);
     }
+    case ProofRewriteRule::EXISTS_ELIM:
+    {
+    // (exists (x1 ... xn) F) = (not (forall (x1 ... xn) (not F)))
+      Assert(res.getNumChildren() == 2);
+      Assert(res[0].getNumChildren() == 2);
+      // vp1: (= (forall (x1 ... xn) (not F)) (not (exists (x1 ... xn) (not (not F)))) //connective_def
+      // vp2: (not (exists (x1 .. xn) (not (not F)))) = (not (exists (x1 ... xn) F))   // rare rewrite 
+
+     // vp4: (= (forall (x1 ... xn) (not F)) (not (exists (x1 ... xn) F)) //trans
+     // vp5: (= (not (forall (x1 ... xn) (not F))) (not (not (exists (x1 ... xn) F))) //cong
+     // vp6: (= (not (not (exists (x1 ... xn) F))) (exists (x1 .. xn) F) //not_simplify 
+     // vp7: (= (not (forall (x1 ... xn) (not F))) (exists (x1 ... xn) F)) //trans
+     
+      Node exists_F = res[0];
+      Node not_forall_not_F = res[1];
+      Node variable_list = exists_F[0];
+      Node F = exists_F[1];
+      Node not_F = F.notNode();
+      Node not_not_F = not_F.notNode();
+      Node exists_not_not_F = nm->mkNode(Kind::EXISTS,variable_list,not_not_F);
+      Node forall_not_F = not_forall_not_F[0];
+      Node vp1 = nm->mkNode(Kind::EQUAL, forall_not_F, exists_not_not_F.notNode());
+      Node vp2 = nm->mkNode(Kind::EQUAL, exists_not_not_F.notNode(), exists_F.notNode());
+      Node vp4 = nm->mkNode(Kind::EQUAL, forall_not_F, exists_F.notNode());
+
+      Node vp5 = nm->mkNode(Kind::EQUAL, forall_not_F.notNode(), exists_F.notNode().notNode());
+      Node vp6 = nm->mkNode(Kind::EQUAL, exists_F.notNode().notNode(), exists_F);
+      Node vp7 = nm->mkNode(Kind::EQUAL, forall_not_F.notNode(), exists_F);
+
+      return
+	addAletheStep(AletheRule::CONNECTIVE_DEF,
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                           {},
+                           {},
+                           *cdp)
+        &&
+        addAletheStep(AletheRule::RARE_REWRITE,
+                           vp2,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp2),
+                           {},
+                           {},
+                           *cdp)
+        && addAletheStep(AletheRule::TRANS,
+                           vp4,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp4),
+                           {vp1,vp2},
+                           {},
+                           *cdp)
+        && addAletheStep(AletheRule::CONG,
+                           vp5,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp5),
+                           {vp4},
+                           {},
+                           *cdp)
+        && addAletheStep(AletheRule::NOT_SIMPLIFY,
+                           vp6,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp6),
+                           {},
+                           {},
+                           *cdp)
+        && addAletheStep(AletheRule::TRANS,
+                           vp7,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp7),
+                           {vp5,vp6},
+                           {},
+                           *cdp)
+	&& addAletheStep(AletheRule::SYMM,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {vp7},
+                           {},
+                           *cdp);
+
+
+
+    }
     default: break;
   }
-std::cout << "di " << di << std::endl;
   return addAletheStep(AletheRule::HOLE,
                        res,
                        nm->mkNode(Kind::SEXPR, d_cl, res),
