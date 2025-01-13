@@ -281,6 +281,11 @@ Node PolyNorm::toNode(const TypeNode& tn) const
     {
       sum.push_back(m.first);
     }
+    else if (m.first.getType().isInteger() && tn.isReal())
+    {
+      Node transform = nm->mkNode(Kind::TO_REAL,m.first);
+      sum.push_back(nm->mkNode(multKind, coeff, nm->mkNode(Kind::TO_REAL,m.first)));
+    }
     else
     {
       Assert(m.first.getType().isComparableTo(tn));
