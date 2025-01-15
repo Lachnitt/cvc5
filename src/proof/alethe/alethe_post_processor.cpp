@@ -215,6 +215,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
     // supported operators
     if (it->second.empty())
     {
+      bool is_int = (cur.getType() == nm->integerType());
       Trace("alethe-poly-norm") << "... reached a composite term: " << cur << " with type "
                             << cur.getType() << " normalization might be necessary!" << std::endl;
       Trace("alethe-poly-norm") << push;
@@ -263,7 +264,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
             }
 
 	    // Proof
-            Node new_polynom = ret.theory::arith::PolyNorm::toNode(nm->realType());
+            Node new_polynom =
+                ret.theory::arith::PolyNorm::toNode(nm->realType());
             Trace("alethe-poly-norm-1")
                 << "... normalized total polynom after adding current child " << new_polynom << " with type "
                 << new_polynom.getType() << std::endl;
@@ -416,6 +418,10 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	    // Let N(t_{i-1}) = a_s' * x_s' + ... + a_n * x_n
 	    // Let N(r_i) = b_s'' * x_s'' + ... + a_m * x_m
 	    // Let N(t_i) = c_s * x_s + ... + c_k * x_k
+
+            Trace("alethe-poly-norm-1") << "... cur " << cur << " \n";
+            Trace("alethe-poly-norm-1") << "... to_be_added " << to_be_added << " \n";
+            Trace("alethe-poly-norm-1") << "... cumulative_normalized " << cumulative_normalized << " \n";
 	    Node timinus1 = cur[0];
 	    std::vector<Node> ris;
             for (int i = 0; i < cur.getNumChildren(); i++)
@@ -423,7 +429,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
               ris.push_back(cur[i]);
               if (i != 0)
               {
-	        Node tr_timinus1 = is_int ? timinus1 : nm->mkNode(Kind::TO_REAL,timinus1);
+	        Node tr_timinus1 = is_int ? nm->mkNode(Kind::TO_REAL,timinus1) : timinus1;
                 Node n_tr_timinus1 = cumulative_normalized[i - 1];
 
                 Node ti = nm->mkNode(k, ris);
@@ -460,7 +466,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
                 Node ui = nm->mkNode(k, timinus1, ri);
                 Node tr_ui = is_int ? nm->mkNode(Kind::TO_REAL,ui) : ui;
                 Node vi = nm->mkNode(k, n_tr_timinus1, n_tr_ri);
-                Node tr_vi = is_int ? nm->mkNode(Kind::TO_REAL,vi) : vi;
+                Node tr_vi = vi;
  
   	        // if is_int:
 	        //   vp3a  (= u_i t_i)          by rare rewrite distrib, note this is on ints
@@ -514,7 +520,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
                   Node vp5c = nm->mkNode(Kind::EQUAL,nm->mkNode(k,n_tr_timinus1,n_tr_ri),tr_vi);
 	          vp5_children.insert(vp5_children.end(), { vp5a, vp5b, vp5c });
                   success &= addAletheStep(AletheRule::HOLE,
-                                           vp5a,
+				  vp5a,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp5a),
                                            {},
                                            {},
@@ -538,7 +544,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 		else {
 	          vp5_children.insert(vp5_children.end(), { vp1, vp2 });
 		}
-	        success &= addAletheStep((is_int ? AletheRule::CONG : AletheRule::RARE_REWRITE),
+	        success &= addAletheStep((is_int ? AletheRule::TRANS : AletheRule::RARE_REWRITE),
                                            vp5,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp5),
                                            vp5_children,
@@ -576,7 +582,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 
 
 
-
+                timinus1 = ri;
                 std::vector<Node> poly_flatten_args = {nm->mkRawSymbol("\"poly-norm-flatten\"", nm->sExprType())};
             }
 	  }}
@@ -614,7 +620,6 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
   Assert(visited.find(n) != visited.end());
 
   TypeNode arith_t3 = n.getType();
-   std::cout << "n " << n << " type " << n.getType() << std::endl;;
   Trace("alethe-poly-norm") << "mkPolyNorm normalized form of " << n << " is "
                         << visited[n].theory::arith::PolyNorm::toNode(arith_t3)
                         << "\n";
@@ -1278,10 +1283,10 @@ bool AletheProofPostprocessCallback::update(Node res,
     //---------------------------------
     //      (x1 d x2) = (y1 d y2)
 
-    // Let X be (x1 d x2)
-    // Let Y be (y1 d y2)
-    // Let cX be cx * (x1 - x2), if x1 is real 
-    // Let cY be cy * (y1 - y2), if y1 is real
+    // Let X be (x1 d x2), if x1 is real or ((to_real x1) d (to_real x2))
+    // Let Y be (y1 d y2), if y1 is real or ((to_real y1) d (to_real y2))
+    // Let cX be cx * (x1 - x2), if x1 is real or (to_real (cx * (x1 - x2)))
+    // Let cY be cy * (y1 - y2), if y1 is real or (to_real (cy * (y1 - y2)))
     //
     //
     // Step 1: we normalize X and Y and obtain proofs between raw and normalized form.
@@ -1312,29 +1317,35 @@ bool AletheProofPostprocessCallback::update(Node res,
     // Similar for y1.
     // 
     // Then, if x1 has type real:
-    //  tr_X_n_tr_X: (= (d x1 x2) (d N(x1) N(x2)))
+    //  X_n_X: (= (d x1 x2) (d N(x1) N(x2)))
     // Then, if x1 has type int:
-    //  tr_X_n_tr_X: (= (d (to_real x1) (to_real x2)) (d N(to_real x1) N(to_real x2)))
+    //  X_n_X: (= (d (to_real x1) (to_real x2)) (d N(to_real x1) N(to_real x2)))
     //
     // We obtain tree T1_X:
     //
     //     tr_x1_n_tr_x1     tr_x2_n_tr_x2
     //  -------------------------------------  CONG
-    //            tr_X_n_tr_X
+    //               X_n_X
     //
     // Similar for y1.
 
     // Step 2: Now the children are normalized.
     //
-    // If x1 has type real:
-    //   Let cX be cx * (x1 - x2) and cY be cy * (y1 - y2)
-    //   Then, let c be (= cX cY)
-    //   tr_cX_n_tr_cX: (= cX N(cX)) 
-    // Similar for xY 
+    // Let c be (= cX cY)
+    // Let cX_n_cX be (= cX N(cX)) 
+    // Similar for cY 
+    //
+    // If the premise had integers in it we have to do some extra work:
+    //
+    // premise:  cx * (x1 - x2) = cy * (y1 - y2)
+    // ------------------------------------------ CONG
+    //                 (= cX cY)
+    //
+    // Otherwise, the premise is already in the right form.
     //
     // Finally, we put this together and obtain tree T2:
     //
-    //  	             ----------premise
+    //  	             ----------
     //   (= cX N(cX))         (= cX cY)          (= cY N(cY))
     //  ------------SYMM  -----------------------------------  TRANS
     //   (= N(cX) cX)        (= cX N(cY))
@@ -1346,28 +1357,47 @@ bool AletheProofPostprocessCallback::update(Node res,
     // However, LA_GENERIC cannot deal with it just having a not in front of it.
     // We need to actually inverse the sign. The result is n_N(x) and n_N(y)
     //
-    // -------------------- RARE_REWRITE  ---------------------------------------------------------- EQUIV_POS1
-    // (not(N(X)) = n_N(X))               (cl (not (= (not(N(X))) n_N(X))) (not(N(X))) (not n_N(X)))
+    // n_X_reverse_1: (cl (= (not(N(X))) n_N(X)))
+    // n_X_reverse_2: (cl (not (= (not(N(X))) n_N(X))) (not(N(X))) (not n_N(X)))
+    // n_X_reverse: (cl (not(N(X))) (not n_N(X)))
+    //
+    // ------------------ RARE_REWRITE  -------------------- EQUIV_POS1
+    //   n_X_reverse_1                      n_X_reverse_2
     // -----------------------------------------------------  RESOLUTION
-    //   (cl (not (N(X))) (not n_N(X)))
+    //                     n_X_reverse
     //
     // vp1_X: (cl (not (= N(cX) N(cY))) n_N(X) N(Y)) can be solved by LA_GENERIC with arguments 1, cx and cy
-    // vp2_X: (cl n_N(X) N(Y))
-    // vp3_X: (cl (n_N (X)) N(Y) N(Y))
-    // vp4_X: (cl (n_N (X)) N(Y))
-    // vp5_X: (cl (not (N (X))) N(Y))
+    // vp2_X: (cl (n_N(X)) N(Y) N(Y))
+    // vp3_X: (cl (n_N(X)) N(Y))
+    // vp4_X: (cl (not (N (X))) N(Y))
     //
     //  ----------------- LA_GENERIC        T2
     //      vp1_X                      (= N(cX) N(cY))
     //  ------------------------------------------------- RES
-    //           vp3_X
-    //  ----------------------- DUPLICATE_LITERALS
-    //           vp4_X                               (cl (not (N(X))) (not n_N(X)))
+    //           vp2_X
+    //  ----------------------- CONTRACTION
+    //           vp3_X                               (cl (not (N(X))) (not n_N(X)))
     //  --------------------------------------------------------------------------------- RES
-    //                               vp5_X
+    //                               vp4_X
     //
-    // Now do the same by negating N(Y) to get:
-    //   vp4_Y: (cl (N (X)) (not (N(Y))))
+    // Now do something similar to get:
+    //
+    // vp1_Y: (cl (not (= N(cY) N(cX))) n_N(Y) N(X)) can be solved by LA_GENERIC with arguments 1, cx and cy
+    // vp2_Y: (cl (n_N(Y)) N(X) N(X))
+    // vp3_Y: (cl (n_N(Y)) N(X))
+    // vp4_Y: (cl (not (N(Y))) N(X))
+    //
+    //                                 (= N(cX) N(cY))
+    //  ----------------- LA_GENERIC  ---------------- SYMM
+    //      vp1_Y                      (= N(cY) N(cX))
+    //  ------------------------------------------------- RES
+    //           vp2_Y
+    //  ----------------------- CONTRACTION
+    //           vp3_Y                               (cl (not (N(Y))) (not n_N(Y)))
+    //  --------------------------------------------------------------------------------- RES
+    //                               vp4_Y
+
+    // 
     //
     // vp5: (cl (= N(X) N(Y)) N(X) N(Y)) 
     //
@@ -1380,7 +1410,7 @@ bool AletheProofPostprocessCallback::update(Node res,
     //   vp5                     vp4_X
     // ---------------------------------- RESOLUTION
     //                vp6_X
-    // ---------------------------------- DUPLICATE_LITERALS
+    // ---------------------------------- CONTRACTION
     //                vp7_X
     //
     // A similar tree gets us:
@@ -1389,13 +1419,43 @@ bool AletheProofPostprocessCallback::update(Node res,
     // Then,
     // vp8: (cl (= N(X) N(Y)) (not (N(X))) (not (N(Y))))
     // vp9: (cl (= N(X) N(Y)) (= N(X) N(Y)) (= N(X) N(Y)))
+    // vp10: (cl (= N(X) N(Y)))
     //
     // --------- EQUIV_NEG1
     //    vp8                     vp7_X        vp7_Y
     // ------------------------------------------------ RESOLUTION
     //                     vp9
-    // ------------------------------------------------- DUPLICATED_LITERALS
-    //                     res
+    // ------------------------------------------------- CONTRACTION
+    //                     vp10
+
+    // Step 4:
+    //                       Y_n_Y  
+    //                     ------- SYMM
+    //   X_n_X   vp10        n_Y_Y
+    // ---------------------------- RES
+    //            n_X_n_Y
+    // 
+    // De-normalization:
+    //
+    //  X_n_X     n_X_n_Y    n_Y_Y
+    // -----------------------------
+    //         (= tr_X tr_Y)
+    //
+    //
+    // if x1 is int:
+    // 
+    // Show that (= X tr_X), i.e. (d x1 x2) = (d (to_real x1) (to_real x2))
+    // Because the types are different we cannot show it with congruence... 
+    // We can show that (d x1 x2) = (d (to_int(to_real x1)) (to_int(to_real x2)))
+    // But we need some theory reasoning for the other part. So for now we put it in one big rewrite 
+    // vp11a: (= (to_int (to_real x1)) x1) by RARE_REWRITE 
+    // vp11b: (= (to_int (to_real x2)) x2) by RARE_REWRITE
+    //
+    // vp12a: (cl (= x1 (to_int (to_real x1)))) by SYMM vp11a
+    // vp12b: (cl (= x2 (to_int (to_real x2)))) by SYMM vp11b
+    //
+    // vp12: (cl (= X (d (to_int (to_real x1)) (to_int (to_real x2)))))
+    //   
     case ProofRule::ARITH_POLY_NORM_REL:
     {
       bool success = true;
@@ -1408,14 +1468,14 @@ bool AletheProofPostprocessCallback::update(Node res,
       Node tr_x1 = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x1) : x1;
       Node x2 = X[1];
       Node tr_x2 = (x2.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x2) : x2;
-      Node tr_X = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,res[0]) : res[0];
+      Node tr_X = nm->mkNode(diamond,tr_x1,tr_x2);
 
       Node Y = res[1];
       Node y1 = Y[0];
       Node tr_y1 = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y1) : y1;
       Node y2 = Y[1];
       Node tr_y2 = (y2.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y2) : y2;
-      Node tr_Y = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,res[1]) : res[1];
+      Node tr_Y = nm->mkNode(diamond,tr_y1,tr_y2);
 
       //TODO:
       bool implicit_to_real = (x1.getType() == nm->integerType() && children[0][0][0].getType()
@@ -1446,14 +1506,14 @@ bool AletheProofPostprocessCallback::update(Node res,
       // Then, if x1 has type real:
       //  tr_X_n_tr_X: (= (d x1 x2) (d N(x1) N(x2)))
       // Then, if x1 has type int:
-      //  tr_X_n_tr_X: (= (d (to_real x1) (to_real x2)) (d N(to_real x1) N(to_real x2)))
+      //  X_n_X: (= (d (to_real x1) (to_real x2)) (d N(to_real x1) N(to_real x2)))
       Node tr_x1_n_tr_x1 = nm->mkNode(Kind::EQUAL,tr_x1,n_tr_x1);
       Node tr_x2_n_tr_x2 = nm->mkNode(Kind::EQUAL,tr_x2,n_tr_x2);
-      Node n_tr_X = nm->mkNode(diamond,tr_x1_n_tr_x1,tr_x2_n_tr_x2);
-      Node tr_X_n_tr_X = nm->mkNode(Kind::EQUAL, tr_X, n_tr_X);
+      Node n_X = nm->mkNode(diamond,n_tr_x1,n_tr_x2);
+      Node X_n_X = nm->mkNode(Kind::EQUAL, tr_X, n_X);
        success &= addAletheStep(AletheRule::CONG,
-	 tr_X_n_tr_X,
-      	 nm->mkNode(Kind::SEXPR,d_cl,tr_X_n_tr_X),
+	 X_n_X,
+      	 nm->mkNode(Kind::SEXPR,d_cl,X_n_X),
 	 {tr_x1_n_tr_x1,tr_x2_n_tr_x2},
 	 {},
 	 *cdp);
@@ -1461,29 +1521,45 @@ bool AletheProofPostprocessCallback::update(Node res,
       // Then, if y1 has type real:
       //  tr_Y_n_tr_Y: (= (d y1 y2) (d N(y1) N(y2)))
       // Then, if y1 has type int:
-      //  tr_Y_n_tr_Y: (= (d (to_real y1) (to_real y2)) (d N(to_real y1) N(to_real y2)))
+      //  Y_n_Y: (= (d (to_real y1) (to_real y2)) (d N(to_real y1) N(to_real y2)))
       Node tr_y1_n_tr_y1 = nm->mkNode(Kind::EQUAL,tr_y1,n_tr_y1);
       Node tr_y2_n_tr_y2 = nm->mkNode(Kind::EQUAL,tr_y2,n_tr_y2);
-      Node n_tr_Y = nm->mkNode(diamond,tr_y1_n_tr_y1,tr_y2_n_tr_y2);
-      Node tr_Y_n_tr_Y = nm->mkNode(Kind::EQUAL, tr_Y, n_tr_Y);
+      Node n_Y = nm->mkNode(diamond,n_tr_y1,n_tr_y2);
+      Node Y_n_Y = nm->mkNode(Kind::EQUAL, tr_Y, n_Y);
+      Node n_Y_Y = nm->mkNode(Kind::EQUAL, n_Y, tr_Y);
        success &= addAletheStep(AletheRule::CONG,
-	 tr_Y_n_tr_Y,
-      	 nm->mkNode(Kind::SEXPR,d_cl,tr_Y_n_tr_Y),
+	 Y_n_Y,
+      	 nm->mkNode(Kind::SEXPR,d_cl,Y_n_Y),
 	 {tr_y1_n_tr_y1,tr_y2_n_tr_y2},
 	 {},
 	 *cdp);
 
-      // Normalize child
-      Node c = children[0];  // cx * (x1 - x2) = cy * (y1 - y2) or cx * to_real(x1 - x2) = cy * to_real(y1 - y2)
-      Node cX = c[0];
-      Node cY = c[1];
+
+    // Step 2: Now the children are normalized.
+    //
+    
+      // Let cX be cx * (x1 - x2), if x1 is real or (to_real (cx * (x1 - x2)))
+      // Let cY be cy * (y1 - y2), if y1 is real or (to_real (cy * (y1 - y2)))
+      Node c = children[0];
+
+      Node cx = c[0][0];
+      Node x1x2 = c[0][1];
+      Node tr_x1x2 = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x1x2) : x1x2;
+      //Node cX = nm->mkNode(Kind::MULT,cx,tr_x1x2);
+      Node cX = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,c[0]) : c[0];
+
+      Node cy = c[1][0];
+      Node y1y2 = c[1][1];
+      Node tr_y1y2 = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y1y2) : y1y2;
+      //Node cY = nm->mkNode(Kind::MULT,cy,tr_y1y2);
+      Node cY = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,c[1]) : c[1];
 
       Node n_cX =
         mkPolyNorm(cX,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
-      Trace("alethe-proof") << " normalized " << ((x1.getType() == int_type) ? "cx * (to_real (x1 - x2))" : " cx*(x1-x2) = ") << cX << " to " << n_cX << std::endl; 
+      Trace("alethe-proof") << " normalized " << ((x1.getType() == int_type) ? "(to_real (cx * (x1 - x2)))" : " cx*(x1-x2) = ") << cX << " to " << n_cX << std::endl; 
       Node n_cY =
         mkPolyNorm(cY,real_type,cdp).theory::arith::PolyNorm::toNode(nm->realType());
-      Trace("alethe-proof") << " normalized " << ((y1.getType() == int_type) ? "cy * (to_real (y1 - y2))" : " cy*(y1-y2) = ") << cY << " to " << n_cY << std::endl; 
+      Trace("alethe-proof") << " normalized " << ((y1.getType() == int_type) ? "(to_real (cy * (y1 - y2)))" : " cy*(y1-y2) = ") << cY << " to " << n_cY << std::endl; 
       
       Node cX_n_cX = nm->mkNode(Kind::EQUAL, cX, n_cX);
       Node cY_n_cY = nm->mkNode(Kind::EQUAL, cY, n_cY);
@@ -1492,105 +1568,474 @@ bool AletheProofPostprocessCallback::update(Node res,
       Node n_cX_n_cY = nm->mkNode(Kind::EQUAL, n_cX, n_cY);
       Node n_cX_cX = nm->mkNode(Kind::EQUAL, n_cX, cX);
       
+    // If the premise had integers in it we have to do some extra work:
+    //
+    // premise:  cx * (x1 - x2) = cy * (y1 - y2)
+    // ------------------------------------------ CONG
+    //                 (= cX cY)
+    //
+    // Otherwise, the premise is already in the right form.
+    if (x1.getType() == int_type){
+     success &= addAletheStep(
+		 AletheRule::CONG,
+		 cX_cY,
+      		 nm->mkNode(Kind::SEXPR, d_cl, cX_cY),
+		 children,
+		 {},
+		 *cdp);
+    }
 
-      /*
-      c is (= cX cY)
 
-      ------------ p       ---------premise  ------------ p
-       (= cX n_cX)         (= cX cY)          (= cY n_cY)
-      ------------SYMM  -----------------------------------  TRANS
-       (= n_cX cX)        (= cX n_cY)
-      -----------------------------------  TRANS
-          (= n_cX n_cY)
-      */
-
-      
-      Assert(children[0] == cX_cY);
-      if (cY != n_cY ){
-            success &= addAletheStep(
+     //  	             
+    //   (= cX N(cX))         (= cX cY)          (= cY N(cY))
+    //  ------------SYMM  -----------------------------------  TRANS
+    //   (= N(cX) cX)        (= cX N(cY))
+    //  -----------------------------------  TRANS
+    //     (= N(cX) N(cY))
+     success &= addAletheStep(
 		 AletheRule::TRANS,
 		 cX_n_cY,
       		 nm->mkNode(Kind::SEXPR, d_cl, cX_n_cY),
 		 {cX_cY,cY_n_cY},
 		 {},
 		 *cdp);
-      }
-      if (n_cX != cX){
-        success &= addAletheStep(
+
+      success &= addAletheStep(
 		AletheRule::SYMM,
 		n_cX_cX,
       		nm->mkNode(Kind::SEXPR, d_cl, n_cX_cX),
 		{cX_n_cX},
 		{},
-		*cdp);
-	 success &= addAletheStep(
+		*cdp)
+      &&  addAletheStep(
 		AletheRule::TRANS,
 		n_cX_n_cY,
 		nm->mkNode(Kind::SEXPR, d_cl,n_cX_n_cY),
 		{n_cX_cX,cX_n_cY},
 		{},
 		*cdp);
-      }
+     Trace("alethe-proof")  << "Finished proof for N(cX) = N(cY)" << std::endl;
+	
  
-      Node n_Y_Y = nm->mkNode(Kind::EQUAL, n_Y, Y);
-      Node n_X_Y = nm->mkNode(Kind::EQUAL, n_X, Y);
-      Node n_X_n_Y = nm->mkNode(Kind::EQUAL, n_X, n_Y);
-      Node n_res = nm->mkNode(Kind::EQUAL, n_X, n_Y);
+      //Node n_Y_Y = nm->mkNode(Kind::EQUAL, n_Y, tr_Y);
+      //Node Y_n_Y = nm->mkNode(Kind::EQUAL, tr_Y, n_Y);
+      //Node n_X_Y = nm->mkNode(Kind::EQUAL, n_X, Y);
+      //Node n_X_n_Y = nm->mkNode(Kind::EQUAL, n_X, n_Y);
+      //Node n_res = nm->mkNode(Kind::EQUAL, n_X, n_Y);
      
-      /*
-
-       --------------------------------------------------- LIA_GENERIC      T1
-        vp2: (cl (not (= n_cX n_cY)) n_X n_Y)                (= n_cX n_cY)
-      ---------------------------------------------------------------------------------------
-      RESOLUTION vp3: (cl (not n_X) n_Y)
-
-      ------------------------------ equiv_neg2
-        vp1: (cl (= n_X n_Y) n_X n_Y)                                  vp3
-
-      -----------------------------------------------------------------------------------------------------------------
-      RESOLUTION (cl (= n_X n_Y))
-
-
-
-
-      */
+      // n_x_reverse_1: (cl (= (not(N(X))) n_N(X)))
+      // n_x_reverse_2: (cl (not (= (not(N(X))) n_N(X))) (not(N(X))) (not n_N(X)))
+      // n_x_reverse: (cl (not(N(X))) (not n_N(X)))
+      //
+      // ------------------ RARE_REWRITE  -------------------- EQUIV_POS1
+      //   n_x_reverse_1                      n_x_reverse_2
+      // -----------------------------------------------------  RESOLUTION
+      //                     n_x_reverse
       
-            Node vp2 = nm->mkNode(Kind::OR, n_X_n_Y, n_cX_n_cY.notNode());
-            success &= addAletheStepFromOr(AletheRule::LIA_GENERIC, vp2,
-      {},{},*cdp);
+      Kind reverse;
+      switch (diamond) {
+	 case Kind::LT:
+	   reverse = Kind::GEQ;
+	   break;
+	 case Kind::LEQ:
+	   reverse = Kind::GT;
+	   break;
+	 case Kind::EQUAL:
+	   reverse = Kind::EQUAL; //TODO
+	   break;
+	 case Kind::GEQ:
+	   reverse = Kind::LT;
+	   break;
+	 case Kind::GT:
+	   reverse = Kind::LEQ;
+	   break;
+         default:
+	   Assert(Unreachable());
+      }
 
- success &= addAletheStep(AletheRule::TH_RESOLUTION, n_X_n_Y,
-      nm->mkNode(Kind::SEXPR,d_cl,n_X_n_Y),{n_cX_n_cY,vp2},d_resPivots ?
-      std::vector<Node>{n_cX_n_cY} : std::vector<Node>()
-      ,*cdp);
-      
+      Node i_n_X = nm->mkNode(reverse,n_X[0],n_X[1]);
+      Node n_X_reverse_1 = nm->mkNode(Kind::EQUAL, n_X.notNode(),i_n_X); 
+      Node n_X_reverse_2 = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X.notNode(),i_n_X).notNode(), n_X.notNode(),i_n_X.notNode()); 
+      Node n_X_reverse = nm->mkNode(Kind::OR,n_X.notNode(),i_n_X.notNode());
 
-      /*
+      success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		n_X_reverse_1,
+      		nm->mkNode(Kind::SEXPR, d_cl, n_X_reverse_1),
+		{},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::EQUIV_POS1,
+		n_X_reverse_2,
+		{},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		n_X_reverse,
+		{n_X_reverse_1,n_X_reverse_2},
+		{},
+		*cdp);
+     Trace("alethe-proof")  << "Finished proof for n_X_reverse" << std::endl;
 
-                                                                (Y = n_Y)
-                                                              ------------ SYMM
-                            (n_X = n_Y)   		          (n_Y = Y)
-                          ------------------------------------------------ TRANS
-                             (n_X = Y)
-          ---------p
-          (X = n_X)
-          -------------------------------------
-                              X=Y
-      */
-           if (n_Y != Y) {
-             success &= addAletheStep(AletheRule::SYMM, n_Y_Y,
-         nm->mkNode(Kind::SEXPR,d_cl,n_Y_Y),{Y_n_Y},{},*cdp); success &=
-         addAletheStep(AletheRule::TRANS, n_X_Y,
-         nm->mkNode(Kind::SEXPR,d_cl,n_X_Y),{n_X_n_Y,n_Y_Y},{},*cdp);
-           }
-           if (X != n_X) {
-             success &= addAletheStep(AletheRule::TRANS, res,
-         nm->mkNode(Kind::SEXPR,d_cl,res),{X_n_X,n_X_Y},{},*cdp);
-           }
-           else{//should not be necessary... try out
-            success &= addAletheStep(AletheRule::HOLE, res,
-         nm->mkNode(Kind::SEXPR,d_cl,res),{},{},*cdp);
-           }
+      // Same for Y
+      Node i_n_Y = nm->mkNode(reverse,n_Y[0],n_Y[1]);
+      Node n_Y_reverse_1 = nm->mkNode(Kind::EQUAL, n_Y.notNode(),i_n_Y); 
+      Node n_Y_reverse_2 = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_Y.notNode(),i_n_Y).notNode(), n_Y.notNode(),i_n_Y.notNode()); 
+      Node n_Y_reverse = nm->mkNode(Kind::OR,n_Y.notNode(),i_n_Y.notNode());
+
+      success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		n_Y_reverse_1,
+      		nm->mkNode(Kind::SEXPR, d_cl, n_Y_reverse_1),
+		{},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::EQUIV_POS1,
+		n_Y_reverse_2,
+		{},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		n_Y_reverse,
+		{n_Y_reverse_1,n_Y_reverse_2},
+		{},
+		*cdp);
+
+     Trace("alethe-proof")  << "Finished proof for n_Y_reverse" << std::endl;
+
+    // vp1_X: (cl (not (= N(cX) N(cY))) n_N(X) N(Y)) can be solved by LA_GENERIC with arguments 1, cx and cy
+    // vp3_X: (cl (n_N (X)) N(Y) N(Y))
+    // vp4_X: (cl (n_N (X)) N(Y))
+    // vp5_X: (cl (not (N (X))) N(Y))
+    //
+    //  ----------------- LA_GENERIC        T2
+    //      vp1_X                      (= N(cX) N(cY))
+    //  ------------------------------------------------- RES
+    //           vp3_X
+    //  ----------------------- CONTRACTION
+    //           vp4_X                               (cl (not (N(X))) (not n_N(X)))
+    //  --------------------------------------------------------------------------------- RES
+    //                               vp5_X
+       
+        Node vp1_X = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_cX,n_cY).notNode(),i_n_X,n_Y);
+        Node vp2_X = nm->mkNode(Kind::OR,i_n_X,n_Y,n_Y);
+        Node vp3_X = nm->mkNode(Kind::OR,i_n_X,n_Y);
+        Node vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
+        std::vector<Node> vp1_X_args = {nm->mkConstInt(Rational(1)),cx,cy};
+        success &= addAletheStepFromOr(
+		AletheRule::LA_GENERIC,
+		vp1_X,
+		{},
+		vp1_X_args,
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp2_X,
+		{vp1_X,n_cX_n_cY},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::CONTRACTION,
+		vp3_X,
+		{vp2_X},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp4_X,
+		{vp3_X,n_X_reverse},
+		{},
+		*cdp);
+
+        Trace("alethe-proof") << "Finished proof that (cl (not (N (X))) N(Y))" << std::endl;
+
+    //
+    // vp1_Y: (cl (not (= N(cY) N(cX))) n_N(Y) N(X)) can be solved by LA_GENERIC with arguments 1, cy and cx
+    // vp2_Y: (cl (n_N(Y)) N(X) N(X))
+    // vp3_Y: (cl (n_N(Y)) N(X))
+    // vp4_Y: (cl (not (N(Y))) N(X))
+    //
+    //                                 (= N(cX) N(cY))
+    //  ----------------- LA_GENERIC  ---------------- SYMM
+    //      vp1_Y                      (= N(cY) N(cX))
+    //  ------------------------------------------------- RES
+    //           vp2_Y
+    //  ----------------------- CONTRACTION
+    //           vp3_Y                               (cl (not (N(Y))) (not n_N(Y)))
+    //  --------------------------------------------------------------------------------- RES
+    //                               vp4_Y
+
+	Node n_cY_n_cX = nm->mkNode(Kind::EQUAL,n_cY,n_cX);
+        Node vp1_Y = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_cY,n_cX).notNode(),i_n_Y,n_X);
+        Node vp2_Y = nm->mkNode(Kind::OR,i_n_Y,n_X,n_X);
+        Node vp3_Y = nm->mkNode(Kind::OR,i_n_Y,n_X);
+        Node vp4_Y = nm->mkNode(Kind::OR,n_Y.notNode(),n_X);
+        
+        std::vector<Node> vp1_Y_args = {nm->mkConstInt(Rational(1)),cy,cx};
+        success &= addAletheStepFromOr(
+		AletheRule::LA_GENERIC,
+		vp1_Y,
+		{},
+		vp1_Y_args,
+		*cdp)
+        && addAletheStep(
+		AletheRule::SYMM,
+		n_cX_n_cY,
+	        nm->mkNode(Kind::SEXPR,d_cl,n_cX_n_cY),
+		{n_cY_n_cX},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp2_Y,
+		{vp1_Y,n_cY_n_cX},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::CONTRACTION,
+		vp3_Y,
+		{vp2_Y},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp4_Y,
+		{vp3_Y,n_Y_reverse},
+		{},
+		*cdp);
+
+        Trace("alethe-proof") << "Finished proof that (cl (not (N (Y))) N(X))" << std::endl;
+
+    // vp5: (cl (= N(X) N(Y)) N(X) N(Y)) 
+    //
+    // -------- EQUIV_NEG2
+    //   vp5     
+    //
+    Node vp5 = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X,n_Y),n_X,n_Y);
+    success &= addAletheStepFromOr(
+		AletheRule::EQUIV_NEG2,
+		vp5,
+		{},
+		{},
+		*cdp);
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)) N(X) N(Y))" << std::endl;
+
+
+    // vp6_X: (cl (= N(X) N(Y)) N(Y) N(Y)) 
+    // vp6_Y: (cl (= N(X) N(Y)) N(X) N(X)) 
+    Node vp6_X = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X,n_Y),n_Y,n_Y);
+    Node vp6_Y = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X,n_Y),n_X,n_X);
+    // vp7_X: (cl (= N(X) N(Y)) N(Y)) 
+    // vp7_Y: (cl (= N(X) N(Y)) N(X)) 
+    Node vp7_X = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X,n_Y),n_Y);
+    Node vp7_Y = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X,n_Y),n_X);
+    //
+    //   vp5                     vp4_X
+    // ---------------------------------- RESOLUTION
+    //                vp6_X
+    // ---------------------------------- CONTRACTION
+    //                vp7_X
+    //
+    success &= addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp6_X,
+		{vp5,vp4_X},
+		{},
+		*cdp)
+        &&  addAletheStepFromOr(
+		AletheRule::CONTRACTION,
+		vp7_X,
+		{vp6_X},
+		{},
+		*cdp);
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)) N(Y))" << std::endl;
+    success &= addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp6_Y,
+		{vp5,vp4_Y},
+		{},
+		*cdp)
+        &&  addAletheStepFromOr(
+		AletheRule::CONTRACTION,
+		vp7_Y,
+		{vp6_Y},
+		{},
+		*cdp);
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)) N(X))" << std::endl;
+
+    // Then,
+    // vp8: (cl (= N(X) N(Y)) (not (N(X))) (not (N(Y))))
+    Node vp8 = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_X,n_Y),n_X.notNode(),n_Y.notNode());
+    // vp9: (cl (= N(X) N(Y)) (= N(X) N(Y)) (= N(X) N(Y)))
+    Node vp9 = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_X,n_Y),nm->mkNode(Kind::EQUAL,n_X,n_Y),nm->mkNode(Kind::EQUAL,n_X,n_Y));
+    // vp10: (cl (= N(X) N(Y)))
+    Node vp10 = nm->mkNode(Kind::EQUAL,n_X,n_Y);
+    //
+    // --------- EQUIV_NEG1
+    //    vp8                     vp7_X        vp7_Y
+    // ------------------------------------------------ RESOLUTION
+    //                     vp9
+    // ------------------------------------------------- CONTRACTION
+    //                     vp10
+
+    success &= addAletheStepFromOr(
+		AletheRule::EQUIV_NEG1,
+		vp8,
+		{},
+		{},
+		*cdp)
+        &&  addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp9,
+		{vp8,vp7_X,vp7_Y},
+		{},
+		*cdp)
+        &&  addAletheStep(
+		AletheRule::CONTRACTION,
+		vp10,
+      		nm->mkNode(Kind::SEXPR, d_cl, vp10),
+		{vp9},
+		{},
+		*cdp);
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)))" << std::endl;
+
+    // Step 4:
+    //                       Y_n_Y  
+    //                     ------- SYMM
+    //   X_n_X   vp10        n_Y_Y
+    // ---------------------------- RES
+    //            n_X_n_Y
+    // 
+
+     Node n_X_n_Y = nm->mkNode(Kind::EQUAL,n_X,n_Y); 
+     success &= addAletheStep(
+		AletheRule::SYMM,
+		n_Y_Y,
+		nm->mkNode(Kind::SEXPR, d_cl, n_Y_Y),
+		{Y_n_Y},
+		{},
+		*cdp)
+        &&  addAletheStep(
+		AletheRule::RESOLUTION,
+		n_X_n_Y,
+		nm->mkNode(Kind::SEXPR, d_cl, n_X_n_Y),
+		{X_n_X,vp10,n_Y_Y},
+		{},
+		*cdp);
+
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)))" << std::endl;
+    // De-normalization:
+    //
+    //  X_n_X     n_X_n_Y    n_Y_Y
+    // -----------------------------
+    //         (= tr_X tr_Y)
+    Node tr_X_tr_Y = nm->mkNode(Kind::EQUAL,tr_X,tr_Y);
+      success &= addAletheStep(
+		AletheRule::TRANS,
+		tr_X_tr_Y,
+		nm->mkNode(Kind::SEXPR, d_cl, tr_X_tr_Y),
+		{X_n_X,n_X_n_Y,n_Y_Y},
+		{},
+		*cdp);
+    std::string temp = "(cl (= ";
+   
+    temp += (x1.getType() == nm->integerType()) ? "tr_X " : "X ";
+    temp += (y1.getType() == nm->integerType()) ? "tr_Y" : "Y";
+     Trace("alethe-proof") << "Finished proof that " << temp << ")) If no to_reals are used the proof is finished" << std::endl;
+Node vp13 = tr_X_tr_Y;
+if (x1.getType() == nm->integerType()){
+
+    // Show that (= X tr_X), i.e. (d x1 x2) = (d (to_real x1) (to_real x2))
+    Node vp12 = nm->mkNode(Kind::EQUAL,X,tr_X);
+    vp13 = nm->mkNode(Kind::EQUAL,X,tr_Y);
+     success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		vp12,
+		nm->mkNode(Kind::SEXPR, d_cl, vp12),
+		{},
+		{},
+		*cdp)
+&& addAletheStep(
+		AletheRule::TRANS,
+		vp13,
+		nm->mkNode(Kind::SEXPR, d_cl, vp13),
+		{vp12,tr_X_tr_Y},
+		{},
+		*cdp);
+
+}
+if (y1.getType() == nm->integerType()){
+
+    // Show that (= tr_Y Y), i.e. (d x1 x2) = (d (to_real x1) (to_real x2))
+    Node vp12_Y = nm->mkNode(Kind::EQUAL,tr_Y,Y);
+     success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		vp12_Y,
+		nm->mkNode(Kind::SEXPR, d_cl, vp12_Y),
+		{},
+		{},
+		*cdp)
+&& addAletheStep(
+		AletheRule::TRANS,
+	        res,
+		nm->mkNode(Kind::SEXPR, d_cl, res),
+		{vp13,vp12_Y},
+		{},
+		*cdp);
+
+}
+ 
+    /*Node ti_tr_x1 = nm->mkNode(Kind::TO_INTEGER,tr_x1);
+    Node ti_tr_x2 = nm->mkNode(Kind::TO_INTEGER,tr_x2);
+    Node vp11a = nm->mkNode(Kind::EQUAL,ti_tr_x1,x1);
+    Node vp11b = nm->mkNode(Kind::EQUAL,ti_tr_x2,x2);
+
+    Node vp12a = nm->mkNode(Kind::EQUAL,x1,ti_tr_x1);
+    Node vp12b = nm->mkNode(Kind::EQUAL,x2,ti_tr_x2);
+    Node vp12c = nm->mkNode(Kind::EQUAL,X,nm->mkNode(diamond,ti_tr_x1,ti_tr_x2));
+ 
+     success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		vp11a,
+		nm->mkNode(Kind::SEXPR, d_cl, vp11a),
+		{},
+		{},
+		*cdp)
+        &&  addAletheStep(
+		AletheRule::SYMM,
+		vp12a,
+		nm->mkNode(Kind::SEXPR, d_cl, vp12a),
+		{},
+		{},
+		*cdp);
+    success &= addAletheStep(
+		AletheRule::RARE_REWRITE,
+		vp11b,
+		nm->mkNode(Kind::SEXPR, d_cl, vp11b),
+		{},
+		{},
+		*cdp)
+        &&  addAletheStep(
+		AletheRule::SYMM,
+		vp12b,
+		nm->mkNode(Kind::SEXPR, d_cl, vp12b),
+		{},
+		{},
+		*cdp);
+
+    success &= addAletheStep(
+		AletheRule::CONG,
+		vp12c,
+		nm->mkNode(Kind::SEXPR, d_cl, vp12c),
+		{vp12a,vp12b},
+		{},
+		*cdp);
+*/
+ 
 
            return success; 
     }

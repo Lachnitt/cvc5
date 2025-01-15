@@ -277,19 +277,17 @@ Node PolyNorm::toNode(const TypeNode& tn) const
     {
       sum.push_back(coeff);
     }
-    else if (coeff == one)
-    {
-      sum.push_back(m.first);
-    }
-    else if (m.first.getType().isInteger() && tn.isReal())
-    {
-      Node transform = nm->mkNode(Kind::TO_REAL,m.first);
-      sum.push_back(nm->mkNode(multKind, coeff, nm->mkNode(Kind::TO_REAL,m.first)));
-    }
-    else
-    {
-      Assert(m.first.getType().isComparableTo(tn));
-      sum.push_back(nm->mkNode(multKind, {coeff, m.first}));
+    else {
+      Node tr_var = (m.first.getType().isInteger() && tn.isReal()) ? nm->mkNode(Kind::TO_REAL,m.first) : m.first;
+      if (coeff == one)
+      {
+        sum.push_back(tr_var);
+      }
+      else
+      {
+        Assert(tr_var.getType().isComparableTo(tn));
+        sum.push_back(nm->mkNode(multKind, {coeff, tr_var}));
+      }
     }
   }
   if (sum.size() == 1)
