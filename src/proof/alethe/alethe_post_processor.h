@@ -93,9 +93,7 @@ class AletheProofPostprocessCallback : protected EnvObj,
 
   /** Retrieve the saved error message, if any. */
   const std::string& getError();
-  theory::arith::PolyNorm mkPolyNorm(TNode n, const TypeNode &arith_type, CDProof* cdp);
-  bool addMonomial2(theory::arith::PolyNorm& a, const TypeNode &arith_type, TNode xi, Rational& bi, bool isNeg, CDProof* cdp);
-  bool addPoly(const TypeNode &arith_type, theory::arith::PolyNorm& a, theory::arith::PolyNorm& b, CDProof* cdp);
+  theory::arith::PolyNorm mkPolyNorm(TNode n, CDProof* cdp);
  private:
   /** The Alethe node converter */
   AletheNodeConverter& d_anc;

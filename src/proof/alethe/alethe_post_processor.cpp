@@ -105,7 +105,7 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
 // for N(k t1 ... tn)
 // If at any point there is a to_real in the term the normalized form of that term will not 
 // be of type real but of type int. 
-theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, const TypeNode &arith_type, CDProof* cdp)
+theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDProof* cdp)
 {
   NodeManager* nm = NodeManager::currentNM();
   Rational zero(0);
@@ -116,11 +116,19 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
   std::vector<TNode> visit;
   TNode cur;
   visit.push_back(n);
-  TypeNode arith_t = n.getType(); // We have to keep track if the 
+  TypeNode real_type = nm->realType(); 
+  TypeNode int_type = nm->integerType(); 
   std::vector<Node> evaluate_args = {nm->mkRawSymbol("\"evaluate\"", nm->sExprType())};
   std::vector<Node> linarith_args = {nm->mkRawSymbol("\"linarith\"", nm->sExprType())};
+  /*
+     (define-rule 
+  */
   std::vector<Node> to_real_uminus_args = {nm->mkRawSymbol("\"arith-to-real-uminus\"", nm->sExprType())};
-
+  std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib-add\"", nm->sExprType())};
+  std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib-minus\"", nm->sExprType())};
+  std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib-uminus\"", nm->sExprType())};
+  std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib-mult\"", nm->sExprType())};
+	
 
   Trace("alethe-poly-norm")
     << "mkPolyNorm normalize n = " << n << " \n";
@@ -141,7 +149,10 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
         visited[cur].addMonomial(null,r);
         visit.pop_back();
 
-        // Add proof for positive constants
+        // Add proof for positive constants c
+	//    (= c c)              by REFL ,if c is of type real
+	// or (= (to_real c) c.0)  by RARE_REWRITE evaluate,if c is of type int
+        Trace("alethe-poly-norm") << "... found a positive constant " << cur << " \n";
         Node const_real = nm->mkConstReal(r);
 	Node LHS;
 	AletheRule rule;
@@ -156,8 +167,6 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	  rule = AletheRule::REFL;
 	}
         Node vp1 = nm->mkNode(Kind::EQUAL,LHS,const_real);
-
-        Trace("alethe-poly-norm") << "... found a positive constant " << cur << " \n";
 	success &= addAletheStep(rule,
                          vp1,
                          nm->mkNode(Kind::SEXPR, d_cl, vp1),
@@ -187,7 +196,6 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
         {
           visited[cur] = theory::arith::PolyNorm();
           visit.push_back(cur[0]);
-
           continue;
         }
       }
@@ -196,6 +204,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 
       // Add proof for atoms (variables, constants, terms with other operators
       // then the aboves)
+      //    (= t t)              by REFL ,if t is of type real
+      // or (= (to_real t) (to_real t))  by RARE_REWRITE evaluate,if t is of type int
       Trace("alethe-poly-norm") << "... found the leaf " << cur << ", no normalization necessary " << " \n";
       Node atom;
       if (cur.getType() == nm->integerType()){
@@ -233,8 +243,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
         case Kind::NONLINEAR_MULT:
         case Kind::TO_REAL:
 	{
-          // The proofs are added later but we collect information about the
-          // steps could be minimized
+          // The proofs are added later, this could be changed though
           std::vector<Node> cumulative_normalized;
           std::vector<Node> to_be_added;
           for (size_t i = 0, nchild = cur.getNumChildren(); i < nchild; i++)
@@ -242,15 +251,16 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
             it = visited.find(cur[i]);
             Assert(it != visited.end());
 
-            // Proofs
-            Trace("alethe-poly-norm")
+            // Proof
+            /*Trace("alethe-poly-norm")
                 << "raw current child: " << cur[i] << " with type "
-                << cur[i].getType() << std::endl;
+                << cur[i].getType() << std::endl;*/
             Node cur_polynom =
                 it->second.theory::arith::PolyNorm::toNode(nm->realType());
-            Trace("alethe-poly-norm")
+            to_be_added.push_back(cur_polynom);
+            /*Trace("alethe-poly-norm")
                 << "normalized current child: " << cur_polynom << " with type "
-                << cur_polynom.getType() << std::endl;
+                << cur_polynom.getType() << std::endl;*/
 
             if ((k == Kind::SUB && i == 1) || k == Kind::NEG)
             {
@@ -269,21 +279,20 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 	    // Proof
             Node new_polynom =
                 ret.theory::arith::PolyNorm::toNode(nm->realType());
-            Trace("alethe-poly-norm-1")
+            /*Trace("alethe-poly-norm-1")
                 << "... normalized total polynom after adding current child " << new_polynom << " with type "
-                << new_polynom.getType() << std::endl;
+                << new_polynom.getType() << std::endl;*/
             cumulative_normalized.push_back(new_polynom);
-            to_be_added.push_back(cur_polynom);
 	    
 
           }
 
-          bool is_int = (cur.getType() == nm->integerType());
+          // Proof
 	  // to_real case has alrady been proven
 
 	  // If cur is integer:
           // prem: to_real(cur[0]) = N(to_real(cur[0]))     already proven
-          // vp1a:  to_real(- cur[0]) = - to_real(cur[0])    by rare-rewrite, arith-to-real-minus
+          // vp1a:  to_real(- cur[0]) = - to_real(cur[0])    by rare-rewrite, arith-to-real-uminus
           // vp1b:  - to_real(cur[0]) = - N(to_real(cur[0])) by cong with prem
           // vp1:  to_real(- cur[0]) = - N(to_real(cur[0]))  by vp1a vp1b trans
           // vp2:  - N(to_real(cur[0])) = N(to_real(-cur[0]) by hole
@@ -385,7 +394,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
             // intuitively, because tr_t_0 = tr_r_0 and tr_r_0 = N(tr_r_0) and N(tr_r_0) = N(tr_t_0)
 	  
 	    // if is_int:
-	    //   vp3a  (= u_i t_i)          by rare rewrite distrib, note this is on ints
+	    //   vp3a  (= u_i t_i)          by rare rewrite arith distrib, note this is on ints
             //   vp3   (= tr_u_i tr_t_i)    by cong with vp3a
 	    // otherwise,
             //   vp3   (= tr_u_i tr_t_i)    by rare rewrite distrib
@@ -484,11 +493,15 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
                 {
                   Node vp3a = nm->mkNode(Kind::EQUAL,ui,ti);
 		  vp3_children.push_back(vp3a);
+		  std::vector<Node> vp3a_args = (k == Kind::ADD) ? distrib_add_args : 
+			(k == Kind::SUB) ? distrib_sub_args :
+			(k == Kind::NEG) ? distrib_neg_args :
+			(k == Kind::MULT || k == Kind::NONLINEAR_MULT) ? distrib_mult_args : distrib_mult_args;
                   success &= addAletheStep(AletheRule::RARE_REWRITE,
                                            vp3a,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp3a),
                                            {},
-                                           evaluate_args,
+                                           vp3a_args,
                                            *cdp);
                
 	        }
@@ -550,11 +563,11 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
 		else {
 	          vp5_children.insert(vp5_children.end(), { vp1, vp2 });
 		}
-	        success &= addAletheStep((is_int ? AletheRule::TRANS : AletheRule::RARE_REWRITE),
+	        success &= addAletheStep((is_int ? AletheRule::TRANS : AletheRule::CONG),
                                            vp5,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp5),
                                            vp5_children,
-                                           evaluate_args,
+                                           {},
                                            *cdp);
                 
                 Trace("alethe-poly-norm-1") << ".... finished proving (= tr_u_i tr_v_i) " << " \n";
@@ -575,7 +588,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
                                            vp7,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp7),
                                            {},
-                                           evaluate_args,
+                                           linarith_args,
                                            *cdp);
                 success &= addAletheStep(AletheRule::TRANS,
                                            vp8,
@@ -628,9 +641,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, cons
   } while (!visit.empty());
   Assert(visited.find(n) != visited.end());
 
-  TypeNode arith_t3 = n.getType();
   Trace("alethe-poly-norm") << "mkPolyNorm normalized form of " << n << " is "
-                        << visited[n].theory::arith::PolyNorm::toNode(arith_t3)
+                        << visited[n].theory::arith::PolyNorm::toNode(real_type)
                         << "\n";
   return visited[n];
 }
@@ -1212,11 +1224,11 @@ bool AletheProofPostprocessCallback::update(Node res,
       else {
 	bool success = true;
         bool is_int = res[0].getType().isInteger();
-        Node LHS = mkPolyNorm(res[0],nm->realType(),cdp).theory::arith::PolyNorm::toNode(nm->realType());
+        Node LHS = mkPolyNorm(res[0],cdp).theory::arith::PolyNorm::toNode(nm->realType());
     	Node tr_res0 = is_int ? nm->mkNode(Kind::TO_REAL,res[0]) : res[0];
         Trace("alethe-proof") << "Normalized res[0] " << tr_res0 << " to " << LHS << std::endl;
         
-	Node RHS = mkPolyNorm(res[1], nm->realType(), cdp).theory::arith::PolyNorm::toNode(nm->realType());
+	Node RHS = mkPolyNorm(res[1],cdp).theory::arith::PolyNorm::toNode(nm->realType());
 	Node tr_res1 = is_int ? nm->mkNode(Kind::TO_REAL,res[1]) : res[1];
         Trace("alethe-proof") << "Normalized res[1] " << tr_res1 << " to " << RHS << std::endl;
 
@@ -1533,13 +1545,13 @@ bool AletheProofPostprocessCallback::update(Node res,
 
       }
       // Normalize x1, x2, y1, y2
-      Node n_tr_x1 = mkPolyNorm(tr_x1,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
+      Node n_tr_x1 = mkPolyNorm(tr_x1,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized tr_x1 = " << tr_x1 << " to " << n_tr_x1 << std::endl; 
-      Node n_tr_x2 = mkPolyNorm(tr_x2,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
+      Node n_tr_x2 = mkPolyNorm(tr_x2,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized tr_x2 = " << tr_x2 << " to " << n_tr_x2 << std::endl; 
-      Node n_tr_y1 = mkPolyNorm(tr_y1,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
+      Node n_tr_y1 = mkPolyNorm(tr_y1,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized tr_y1 = " << tr_y1 << " to " << n_tr_y1 << std::endl; 
-      Node n_tr_y2 = mkPolyNorm(tr_y2,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
+      Node n_tr_y2 = mkPolyNorm(tr_y2,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized tr_y2 = " << tr_y2 << " to " << n_tr_y2 << std::endl; 
 
 
@@ -1595,10 +1607,10 @@ bool AletheProofPostprocessCallback::update(Node res,
       Node cY = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,c[1]) : c[1];
 
       Node n_cX =
-        mkPolyNorm(cX,real_type,cdp).theory::arith::PolyNorm::toNode(real_type);
+        mkPolyNorm(cX,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized " << ((x1.getType() == int_type) ? "(to_real (cx * (x1 - x2)))" : " cx*(x1-x2) = ") << cX << " to " << n_cX << std::endl; 
       Node n_cY =
-        mkPolyNorm(cY,real_type,cdp).theory::arith::PolyNorm::toNode(nm->realType());
+        mkPolyNorm(cY,cdp).theory::arith::PolyNorm::toNode(nm->realType());
       Trace("alethe-proof") << " normalized " << ((y1.getType() == int_type) ? "(to_real (cy * (y1 - y2)))" : " cy*(y1-y2) = ") << cY << " to " << n_cY << std::endl; 
       
       Node cX_n_cX = nm->mkNode(Kind::EQUAL, cX, n_cX);
@@ -1698,6 +1710,34 @@ Node vp4_Y;
     // eq3_X: (cl (= N(y1) N(y2)) (not (<= N(y1) N(y2))) (not (<= N(y2) N(y1)))) by LA_DISEQUALITY
 
     // vp4_X: (cl (not N(X)) (not (= N(y1) N(y2)))) by RESOLUTION vp2_X vp2_X' eq3_X
+ 
+    /*
+        (not (= N(cX) N(cY)))
+	(not (N(X)))   which is (not (= N(x1) N(x2)))
+	(>= N(y1) N(y2))
+
+	Step 1 & 2
+
+        (= N(cX) N(cY))
+	(= N(x1) N(x2))
+	(< N(y1) N(y2))
+
+	Step 3
+
+        (= (- N'(cX) N'(cY)) (- (* cy (d_y1 - d_y2)) (* cx (d_x1 - d_x2))))
+	(= (- N'(x1) N'(x2)) (- d_x2 d_x1))
+	(< (- N'(y1) N'(y2)) (- d_y2 d_y1))
+
+        Step 5
+
+        (= (- N'(cX) N'(cY)) (- (* cy (d_y1 - d_y2)) (* cx (d_x1 - d_x2))))
+	(= f(- N'(x1) N'(x2)) (* cx (- d_x2 d_x1)))
+	(< f(- N'(y1) N'(y2)) (* cy (- d_y2 d_y1)))
+
+	Add together:
+        
+
+   */
 Trace("alethe-proof") << "HERE" << std::endl;
     Node vp1_X = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(),n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
     Node vp1_X_2 = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(),n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
