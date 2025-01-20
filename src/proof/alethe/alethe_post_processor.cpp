@@ -94,6 +94,186 @@ bool AletheProofPostprocessCallback::shouldUpdatePost(
          || rule == AletheRule::CONTRACTION;
 }
 
+/*
+
+Add proof for unary negation of a polynom 
+
+     (define-cond-rule arith-poly-distrib-uminus-mult
+	 ((c Real) (y Real) (d Real) (xs Real :list) (ys Real :list))
+	 (= d (- c))
+	 (+ xs (- (+ (* c y) ys)))
+	 (+ zs (* d y) (- (+ ys)))
+     )
+
+     (define-cond-rule arith-poly-distrib-uminus-const
+	 ((c Real) (d Real) (xs Real :list) (ys Real :list))
+	 (= d (- c))
+	 (+ xs (- (+ c ys)))
+         (+ xs d (- (+ ys)))
+     )
+     
+     (define-rule arith-poly-distrib-uminus-var
+	 ((y Real) (xs Real :list) (ys Real :list))
+	 (+ xs (- (+ y ys)))
+	 (+ xs (* (- 1.0) y) (- (+ ys)))
+     )
+
+The general form is
+
+The old coefficient:
+m = (* c y)    , if isMult
+m = c          , if isConst
+m = y          , if isVar
+
+The new coefficient:
+t = (* d y)         , if isMult
+t = d               , if isConst
+t = (* (- 1.0) y)   , if isVar
+
+cond:
+  (= d (- c))  , if isMult or isConst
+  none         , if isVar
+
+match:
+  (+ xs (- (+ m ys)))
+
+target:
+  (+ xs t (- (+ ys)))
+
+
+The terms are:
+
+r = (+ m ys)    ,if ys != []
+r = m           ,if ys =[]
+
+cond is unchanged
+
+match = (+ xs (- r))   ,if xs != []
+match = - r            ,if xs = []
+
+target = (+ xs t)              ,if xs != [] and ys = []
+target = (+ xs t (- (+ ys)))   ,if xs != [] and ys != []
+target = t                     ,if xs = [] and ys = []
+target = (+ t (- (+ ys)))      ,if xs = [] and ys != []
+
+
+
+It would be better to do this on polynoms but I could not wrap my head around it
+
+*/
+
+/*
+void addPolyNegProof(Node p, CDProof* cdp){
+  NodeManager* nm = NodeManager::currentNM();
+  bool success = true;
+  Node null;
+  std::vector<Node> evaluate_args = {nm->mkRawSymbol("\"evaluate\"", nm->sExprType())};
+  std::vector<Node> mult_args = {nm->mkRawSymbol("\"arith-poly-distrib-uminus-mult\"", nm->sExprType())};
+  std::vector<Node> const_args = {nm->mkRawSymbol("\"arith-poly-distrib-uminus-const\"", nm->sExprType())};
+  std::vector<Node> one_args = {nm->mkRawSymbol("\"arith-poly-distrib-uminus-var\"", nm->sExprType())};
+  std::vector<Node> all_nodes = {};
+
+
+  std::vector<Node> xs = {};
+  std::vector<Node> ys = {};
+  
+  for (size_t i = 1, nchild = p.getNumChildren(); i < nchild; i++)
+  {
+    ys.push_back(p[i]);
+  }
+
+  for (size_t i = 0, nchild = p.getNumChildren(); i < nchild; i++){
+    // m = (* c y)    , if isMult
+    // m = c          , if isConst
+    // m = y          , if isVar
+    Node m = p[0];
+
+    bool isMult = (m.getKind() == Kind::MULT);
+    bool isConst = (m.getKind() == Kind::CONST_RATIONAL || m.getKind() == Kind::NEG);
+    bool hasConst = (isMult || isConst);
+    bool isOne = (!isMult && !isConst);
+
+    // calculate d
+    Node c = isMult ? m[0] : (isConst ? m : null);
+    Node y = isMult ? m[1] : (isOne ? m : null);
+    Node d = hasConst ? ((c.getKind() == Kind::NEG) ? c[0] : c) : null;
+ 
+    // t = (* d y)         , if isMult
+    // t = d               , if isConst
+    // t = (* (- 1.0) y)   , if isVar
+    Node t = isMult  ? nm->mkNode(Kind::MULT,d,y) :
+	     isConst ? d :
+             nm->mkNode(Kind::MULT,nm->mkConstReal(Rational(-1)),y);
+   
+    // (= d (- c))  , if isMult or isConst
+    // none         , if isVar
+    Node cond = nm->mkNode(Kind::EQUAL,d,nm->mkNode(Kind::NEG,c));
+ 
+    // r = (+ m ys)    ,if ys != []
+    // r = m           ,if ys =[]
+    std::vector<Node> m_ys;
+    m_ys.push_back(m);
+    m_ys.insert(m_ys.end(),ys.begin(),ys.end());
+    Node r = ys.empty() ? m : nm->mkNode(Kind::ADD,m_ys);
+
+ 
+    // match = (+ xs (- r))   ,if xs != []
+    // match = - r            ,if xs = []
+    std::vector<Node> xs_nr = xs;
+    xs_nr.push_back(nm->mkNode(Kind::NEG,r));
+    Node match = xs.empty() ? nm->mkNode(Kind::NEG,r) : nm->mkNode(Kind::ADD,xs_nr);
+
+    // target = (+ xs t)              ,if xs != [] and ys = []
+    // target = (+ xs t (- (+ ys)))   ,if xs != [] and ys != []
+    // target = t                     ,if xs = [] and ys = []
+    // target = (+ t (- (+ ys)))      ,if xs = [] and ys != []
+    Node target;
+    if (xs.empty()) {
+      if (ys.empty()) {
+        target = t;
+      }
+      else {
+	Node rest = nm->mkNode(Kind::NEG,nm->mkNode(Kind::ADD,ys));
+        target = nm->mkNode(Kind::ADD,t,rest);
+      }
+    }
+    else {
+      std::vector<Node> target_children;
+      target_children = xs;
+      target_children.push_back(t);
+      if (!ys.empty()) {
+	Node rest = nm->mkNode(Kind::NEG,nm->mkNode(Kind::ADD,ys));
+        target_children.push_back(rest);
+      }
+      target = nm->mkNode(Kind::ADD,target_children);
+    }
+
+    if (hasConst){
+	success &= addAletheStep(AletheRule::RARE_REWRITE,
+                         cond,
+                         nm->mkNode(Kind::SEXPR, d_cl, cond),
+                         {},
+                         evaluate_args,
+                         *cdp);
+    }
+    Node res = nm->mkNode(Kind::EQUAL,match,target);
+    all_nodes.push_back(res);
+    std::vector<Node> children = {};
+    std::vector<Node> args = isMult ? mult_args : isConst ? const_args : one_args;
+    if (hasConst){children.push_back(cond);}
+      success &= addAletheStep(AletheRule::RARE_REWRITE,
+                         res,
+                         nm->mkNode(Kind::SEXPR, d_cl, res),
+                         children,
+                         args,
+                         *cdp);
+     xs.push_back(t);
+     std::vector<Node> ys_new = ys;
+     ys.clear();
+     ys.insert(ys.end(),ys_new.begin()+1,ys_new.end());
+   }
+}*/
+
 
 
 // TODO: Re-add bit-vector handling
@@ -121,7 +301,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
   std::vector<Node> evaluate_args = {nm->mkRawSymbol("\"evaluate\"", nm->sExprType())};
   std::vector<Node> linarith_args = {nm->mkRawSymbol("\"linarith\"", nm->sExprType())};
   /*
-     (define-rule 
+     (define-rule arith-to-real-uminus ((t Int)) (to_real (-x)) (- (to_real x)))
+
   */
   std::vector<Node> to_real_uminus_args = {nm->mkRawSymbol("\"arith-to-real-uminus\"", nm->sExprType())};
   std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib-add\"", nm->sExprType())};
@@ -288,29 +469,48 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
           }
 
           // Proof
-	  // to_real case has alrady been proven
-
-	  // If cur is integer:
-          // prem: to_real(cur[0]) = N(to_real(cur[0]))     already proven
-          // vp1a:  to_real(- cur[0]) = - to_real(cur[0])    by rare-rewrite, arith-to-real-uminus
-          // vp1b:  - to_real(cur[0]) = - N(to_real(cur[0])) by cong with prem
-          // vp1:  to_real(- cur[0]) = - N(to_real(cur[0]))  by vp1a vp1b trans
-          // vp2:  - N(to_real(cur[0])) = N(to_real(-cur[0]) by hole
-          // vp3:  to_real(- cur[0]) = N(to_real(-cur[0])    by trans with vp2 vp3
+          // Depends on kind:
+	  // 1. to_real case has alrady been proven and can be skipped.
+          // 2. unary negation
+	  //   a) If cur is integer:
+          //   prem: to_real(cur[0]) = N(to_real(cur[0]))     already proven
+          //   vp1a:  to_real(- cur[0]) = - to_real(cur[0])
+          //   vp1b:  - to_real(cur[0]) = - N(to_real(cur[0]))
+          //   vp1:  to_real(- cur[0]) = - N(to_real(cur[0]))
+          //   vp2:  - N(to_real(cur[0])) = N(to_real(- cur[0]))
+          //   vp3:  to_real(- cur[0]) = N(to_real(- cur[0]))
           //
-          // If cur is a real:
-          // prem: cur[0] = N(cur[0])          already proven
-          // vp1: - cur[0] = - N(cur[0])       by cong with prem
-          // vp2: - N(cur[0]) = N(-cur[0])     by hole
-          // vp3: - cur[0] = N(-cur[0])        by trans with vp1 vp2
+          //                                prem
+          //    --------- RARE_REWRITE^1  -------- CONG
+          //      vp1a                      vp1b                 T2
+          //    ---------------------------------- TRANS       ------- RARE_REWRITE^2
+          //                   vp1                               vp2
+          //    ------------------------------------------------------- TRANS
+          //                               vp3
+          //
+          //    RARE_REWRITE^1: arith-to-real-uminus
+          //    RARE_REWRITE^2: linarith
+          //
+          //   b) If cur is a real:
+          //   prem: cur[0] = N(cur[0])          already proven
+          //   vp1: - cur[0] = - N(cur[0])       by cong with prem
+          //   vp2: - N(cur[0]) = N(-cur[0])     RARE_REWRITE^2
+          //   vp3: - cur[0] = N(-cur[0])        by trans with vp1 vp2
+          //
+          //                   prem                              T2
+          //    ---------------------------------- CONG       ------- RARE_REWRITE^2
+          //                   vp1                               vp2
+          //    ------------------------------------------------------- TRANS
+          //                               vp3
+
           if ( (k == Kind::SUB && cur.getNumChildren() == 1)
               || k == Kind::NEG)
           {
-            Trace("alethe-poly-norm-1") << "... term is negation" << " \n";
-            Trace("alethe-poly-norm-1") << "... raw previous term: " << cur[0] << " \n";
-            Trace("alethe-poly-norm-1") << "... raw current term: " << cur << " \n";
-            Trace("alethe-poly-norm-1") << ".... normalized current term: " << to_be_added[0] << " \n";
-            Trace("alethe-poly-norm-1") << "... total after merging current term: " << cumulative_normalized[0] << " \n";
+            Trace("alethe-poly-norm") << "... term is negation" << " \n";
+            Trace("alethe-poly-norm") << "... raw previous term: " << cur[0] << " \n";
+            Trace("alethe-poly-norm") << "... raw current term: " << cur << " \n";
+            Trace("alethe-poly-norm") << ".... normalized current term: " << to_be_added[0] << " \n";
+            Trace("alethe-poly-norm") << "... total after merging current term: " << cumulative_normalized[0] << " \n";
 
 	    std::vector<Node> temp = {};
 	    temp.insert(temp.end(),cur[0].begin(),cur[0].end());
@@ -361,7 +561,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                            vp2,
                            nm->mkNode(Kind::SEXPR, d_cl, vp2),
                            {},
-                           evaluate_args,
+                           linarith_args,
                            *cdp)
 		&& addAletheStep(AletheRule::TRANS,
                            vp3,
@@ -1239,7 +1439,7 @@ bool AletheProofPostprocessCallback::update(Node res,
         Node vp2 = nm->mkNode(Kind::EQUAL, tr_res1, RHS);
         Node vp3 = nm->mkNode(Kind::EQUAL, RHS, tr_res1);
         Node vp4 = nm->mkNode(Kind::EQUAL, tr_res0, tr_res1);
-        std::vector<Node> rule_args2 = {nm->mkRawSymbol("\"arith_to_int_to_real\"", nm->sExprType())};
+        std::vector<Node> rule_args2 = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType())};
 
 	success &= addAletheStep(
 	    AletheRule::SYMM,
@@ -1266,7 +1466,7 @@ bool AletheProofPostprocessCallback::update(Node res,
           Node vp7 = nm->mkNode(Kind::EQUAL, res[0], ti_tr_res0);
           Node vp8 = nm->mkNode(Kind::EQUAL, ti_tr_res1, res[1]);
 
-          std::vector<Node> rule_args = {nm->mkRawSymbol("\"arith_to_int_to_real\"", nm->sExprType())};
+          std::vector<Node> rule_args = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType())};
      //   ------- rule
     //     vp6             vp4
     //   ------- SYMM    ------- CONG      -------- rule 
@@ -1732,11 +1932,15 @@ Node vp4_Y;
 
         (= (- N'(cX) N'(cY)) (- (* cy (d_y1 - d_y2)) (* cx (d_x1 - d_x2))))
 	(= f(- N'(x1) N'(x2)) (* cx (- d_x2 d_x1)))
-	(< f(- N'(y1) N'(y2)) (* cy (- d_y2 d_y1)))
+	(= f(- N'(y1) N'(y2)) (* (- cy) (- d_y2 d_y1)))
 
 	Add together:
-        
-
+        (* cy (d_y1 - d_y2))
+        - (* cx (d_x1 - d_x2))
+        (* cx (- d_x2 d_x1))
+        - (* cy (- d_y2 d_y1))
+        --------------------------------------
+        0
    */
 Trace("alethe-proof") << "HERE" << std::endl;
     Node vp1_X = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(),n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
@@ -1749,7 +1953,7 @@ Trace("alethe-proof") << "HERE" << std::endl;
     Node eq2_X_2 = nm->mkNode(Kind::OR, n_X.notNode(),nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1));
     Node eq3_X = nm->mkNode(Kind::OR, n_Y,(nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2)).notNode(),(nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1).notNode()));
 vp4_X = nm->mkNode(Kind::OR, n_X.notNode(), n_Y);
-    std::vector<Node> vp1_X_args = {nm->mkConstReal(Rational(1)),cx,cy};
+    std::vector<Node> vp1_X_args = {nm->mkConstReal(Rational(1)),cx,nm->mkNode(Kind::NEG,cy)};
     std::vector<Node> vp1_X_2_args = {nm->mkConstReal(Rational(1)),nm->mkNode(Kind::NEG,cx),cy};
         success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
