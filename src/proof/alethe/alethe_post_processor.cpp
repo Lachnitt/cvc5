@@ -1620,8 +1620,8 @@ bool AletheProofPostprocessCallback::update(Node res,
     //  ------------------------------------------------- RES
     //           vp2_X
     //  ----------------------- CONTRACTION
-    //           vp3_X                               (cl (not (N(X))) (not n_N(X)))
-    //  --------------------------------------------------------------------------------- RES
+    //           vp3_X                                       n_X_reverse
+    //  ----------------------------------------------------------------- RES
     //                               vp4_X
     //
     // If d is the equality sign:
@@ -1896,70 +1896,152 @@ Node vp4_X;
 Node vp4_Y;
 
       if (diamond == Kind::EQUAL){
-    // If d is the equality sign:
-    // vp1_X: (cl (not (= N(cX) N(cY))) (not (N(X))) (>= N(y1) N(y2))) by LA_GENERIC
-    // vp1_X_2: (cl (not (= N(cX) N(cY))) (not (N(X))) (>= N(y2) N(y1))) by LA_GENERIC
-    // vp2_X: (cl (not (N(X))) (>= N(y1) N(y2))) by RESOLUTION n_cX_n_cY
-    // vp2_X_2: (cl (not (N(X))) (>= N(y2) N(y1))) by RESOLUTION n_cX_n_cY
-    
-    // eq1_X: (cl (not (>= N(y2) N(y1))) (<= N(y1) N(y2)))
-    // eq1_X_2: (cl (not (>= N(y1) N(y2))) (<= N(y2) N(y1)))
-    // eq2_X: (cl (not (N(X))) (<= N(y1) N(y2))) by RESOLUTION vp2_X eq1_X
-    // eq2_X_2: (cl (not (N(X))) (<= N(y2) N(y1))) by RESOLUTION vp2_X_2 eq1_X_2
+    // cx * (x1 - x2) = cy * (y1 - y2)
+    //---------------------------------
+    //      (x1 = x2) = (y1 = y2)
 
-    // eq3_X: (cl (= N(y1) N(y2)) (not (<= N(y1) N(y2))) (not (<= N(y2) N(y1)))) by LA_DISEQUALITY
+/*
 
-    // vp4_X: (cl (not N(X)) (not (= N(y1) N(y2)))) by RESOLUTION vp2_X vp2_X' eq3_X
- 
-    /*
-        (not (= N(cX) N(cY)))
-	(not (N(X)))   which is (not (= N(x1) N(x2)))
-	(>= N(y1) N(y2))
 
-	Step 1 & 2
+vp1_X_1: (cl (not (x1 = x2)) (y1 <= y2))
+vp1_X_2: (cl (not (x1 = x2)) (y2 <= y1))
 
-        (= N(cX) N(cY))
-	(= N(x1) N(x2))
-	(< N(y1) N(y2))
+vp2: (cl (= ny1 ny2) (not (<= y1 y2)) (not (<= y2 y1)))
 
-	Step 3
+vp3: (cl (not (= x1 x2)) (= ny1 y2))
 
-        (= (- N'(cX) N'(cY)) (- (* cy (d_y1 - d_y2)) (* cx (d_x1 - d_x2))))
-	(= (- N'(x1) N'(x2)) (- d_x2 d_x1))
-	(< (- N'(y1) N'(y2)) (- d_y2 d_y1))
 
-        Step 5
 
-        (= (- N'(cX) N'(cY)) (- (* cy (d_y1 - d_y2)) (* cx (d_x1 - d_x2))))
-	(= f(- N'(x1) N'(x2)) (* cx (- d_x2 d_x1)))
-	(= f(- N'(y1) N'(y2)) (* (- cy) (- d_y2 d_y1)))
+N(x1) = nx1_cu * nx1_tu + ... + nx1_c0 * nx1_t0 + d_x1
+N(x2) = nx2_cu * nx2_tu + ... + nx2_c0 * nx2_t0 + d_x2
+N(cX) = N(cx * (x1 - x2)) = ncx_cu * ncx_tu + ... + ncx_c0 * ncx_t0 + (cx * (d_x1 - d_x2)), where ncx_cu = cx * (nx1_cu - nx2_cu) = ncy_cu = cy * (ny1_cu - ny2_cu) 
 
-	Add together:
-        (* cy (d_y1 - d_y2))
-        - (* cx (d_x1 - d_x2))
-        (* cx (- d_x2 d_x1))
-        - (* cy (- d_y2 d_y1))
-        --------------------------------------
-        0
-   */
+We know that N(cX) = N(cY) which is:
+T:
+  (
+   (cx * (nx1_cu - nx2_cu) * ncx_tu + ... + cx * (nx1_c0 - nx2_c0) * ncx_t0)
+   - 
+   (cy * (ny1_cu - ny2_cu) * ncy_tu + ... + cy * (ny1_c0 - ny2_c0) * ncy_t0)
+  )
+ = 
+  (cy * (d_y1 - d_y2))
+  -
+  (cx * (d_x1 - d_x2))
+
+
+vp1_X_1 by LA_GENERIC
+
+Arguments are: -cx, cy
+   (not (N(x1) = N(x2)))
+   (N(y1) <= N(y2))
+
+After Step 1 & 2:
+
+   (N(x1) = N(x2))
+   (N(y1) > N(y2))
+
+After Step 3:
+
+   (nx1_cu * nx1_tu + ... + nx1_c0 * nx1_t0) - (nx2_cu * nx2_tu + ... + nx2_c0 * nx2_t0)  = (d_x2 - d_x1)
+   (ny1_cu * ny1_tu + ... + ny1_c0 * ny1_t0) - (ny2_cu * ny2_tu + ... + ny2_c0 * ny2_t0)  = (d_y2 - d_y1)
+
+After Step 4 & 5:
+
+   -(cx * (nx1_cu - nx2_cu) * nx1_tu + ... + cx * (nx1_c0 - nx2_c0) * nx1_t0)  = -cx * (d_x2 - d_x1)
+   (cy * (ny1_cu - ny2_cu) * ny1_tu + ... + cy * (ny1_c0 - ny2_c0) * ny1_t0)  = cy * (d_y2 - d_y1)
+
+Add together:
+LHS is 
+   (
+   -(cx * (nx1_cu - nx2_cu) * ncx_tu + ... + cx * (nx1_c0 - nx2_c0) * ncx_t0)
+   + 
+   (cy * (ny1_cu - ny2_cu) * ncy_tu + ... + cy * (ny1_c0 - ny2_c0) * ncy_t0)
+  )
+which is -T[0]
+RHS is
+  -(cx * (d_x2 - d_x1))
+  +
+  (cy * (d_y2 - d_y1))
+=
+  (cx * (-d_x2 + d_x1))
+  +
+  (cy * -(-d_y2 + d_y1))
+= 
+  -(cy * (d_y1 - d_y2))
+  +
+  (cx * (d_x1 - d_x2))
+which is -T[1]
+
+
+vp1_X_2 by LA_GENERIC
+
+Arguments are: -cx, cy
+   (not (N(x1) = N(x2)))
+   (N(y2) <= N(y1))
+
+
+After Step 1 & 2:
+
+   (N(x1) = N(x2))
+   (N(y2) > N(y1))
+
+After Step 3:
+
+   (nx1_cu * nx1_tu + ... + nx1_c0 * nx1_t0) - (nx2_cu * nx2_tu + ... + nx2_c0 * nx2_t0)  = (d_x2 - d_x1)
+   (ny1_cu * ny1_tu + ... + ny1_c0 * ny1_t0) - (ny2_cu * ny2_tu + ... + ny2_c0 * ny2_t0)  = (d_y2 - d_y1)
+
+After Step 4 & 5:
+
+   -(cx * (nx1_cu - nx2_cu) * nx1_tu + ... + cx * (nx1_c0 - nx2_c0) * nx1_t0)  = -cx * (d_x2 - d_x1)
+   (cy * (ny1_cu - ny2_cu) * ny1_tu + ... + cy * (ny1_c0 - ny2_c0) * ny1_t0)  = cy * (d_y2 - d_y1)
+
+Add together:
+LHS is 
+   (
+   -(cx * (nx1_cu - nx2_cu) * ncx_tu + ... + cx * (nx1_c0 - nx2_c0) * ncx_t0)
+   + 
+   (cy * (ny1_cu - ny2_cu) * ncy_tu + ... + cy * (ny1_c0 - ny2_c0) * ncy_t0)
+  )
+which is -T[0]
+RHS is
+  -(cx * (d_x2 - d_x1))
+  +
+  (cy * (d_y2 - d_y1))
+=
+  (cx * (-d_x2 + d_x1))
+  +
+  (cy * -(-d_y2 + d_y1))
+= 
+  -(cy * (d_y1 - d_y2))
+  +
+  (cx * (d_x1 - d_x2))
+which is -T[1]
+
+
+vp1_X_1: (cl (not (nx1 = nx2)) (ny1 <= ny2))
+vp1_X_2: (cl (not (nx1 = nx2)) (ny2 <= ny1))
+
+vp2_X: (cl (= ny1 ny2) (not (<= ny1 ny2)) (not (<= ny2 ny1)))
+
+vp4_X: (cl (not (= nx1 nx2)) (= ny1 ny2))
+
+
+*/
+
+
 Trace("alethe-proof") << "HERE" << std::endl;
-    Node vp1_X = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(),n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
-    Node vp1_X_2 = nm->mkNode(Kind::OR, n_cX_n_cY.notNode(),n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
-    Node vp2_X = nm->mkNode(Kind::OR, n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
-    Node vp2_X_2 = nm->mkNode(Kind::OR, n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
-    Node eq1_X = nm->mkNode(Kind::OR, (nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1)).notNode(),nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2));
-    Node eq1_X_2 = nm->mkNode(Kind::OR, (nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1)).notNode(),nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1));
-    Node eq2_X = nm->mkNode(Kind::OR, n_X.notNode(),nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2));
-    Node eq2_X_2 = nm->mkNode(Kind::OR, n_X.notNode(),nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1));
-    Node eq3_X = nm->mkNode(Kind::OR, n_Y,(nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2)).notNode(),(nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1).notNode()));
-vp4_X = nm->mkNode(Kind::OR, n_X.notNode(), n_Y);
-    std::vector<Node> vp1_X_args = {nm->mkConstReal(Rational(1)),cx,nm->mkNode(Kind::NEG,cy)};
-    std::vector<Node> vp1_X_2_args = {nm->mkConstReal(Rational(1)),nm->mkNode(Kind::NEG,cx),cy};
-        success &= addAletheStepFromOr(
+    Node vp1_X_1 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
+    Node vp1_X_2 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
+    Node vp2_X = nm->mkNode(Kind::OR,n_Y,nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
+    vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
+    
+    std::vector<Node> vp1_X_1_args = {nm->mkNode(Kind::NEG,cx),cy};
+    std::vector<Node> vp1_X_2_args = {nm->mkNode(Kind::NEG,cx),cy};
+    success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
-		vp1_X,
+		vp1_X_1,
 		{},
-		vp1_X_args,
+		vp1_X_1_args,
 		*cdp)
      && addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
@@ -1968,82 +2050,52 @@ vp4_X = nm->mkNode(Kind::OR, n_X.notNode(), n_Y);
 		vp1_X_2_args,
 		*cdp)
        && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		vp2_X,
-		{vp1_X,n_cX_n_cY},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		vp2_X_2,
-		{vp1_X_2,n_cX_n_cY},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::HOLE,
-		eq1_X,
-		{},
-		{},
-		*cdp)
-    && addAletheStepFromOr(
-		AletheRule::HOLE,
-		eq1_X_2,
-		{},
-		{},
-		*cdp)
-
-    // eq2_X: (cl (not (N(X))) (<= N(y1) N(y2))) by RESOLUTION vp2_X_2 eq1_X
-   && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		eq2_X,
-		{vp2_X,eq1_X},
-		{},
-		*cdp)
-   && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		eq2_X_2,
-		{vp2_X_2,eq1_X_2},
-		{},
-		*cdp)
-
-    // eq3_X: (cl (not (= N(y1) N(y2))) (not (<= N(y1) N(y2))) (not (>= N(y1) N(y2)))) by LA_DISEQUALITY
-
-&& addAletheStep(
 		AletheRule::LA_DISEQUALITY,
-		eq3_X,
-	        nm->mkNode(Kind::SEXPR,d_cl,eq3_X),
+		vp2_X,
 		{},
 		{},
 		*cdp)
-
-   && addAletheStepFromOr(
-		AletheRule::OR,
-		eq3_X,
-		{eq3_X},
-		{},
-		*cdp)
-
-
        && addAletheStepFromOr(
-		AletheRule::HOLE,
+		AletheRule::RESOLUTION,
 		vp4_X,
-		{vp2_X,vp2_X_2,eq3_X},
+		{vp2_X,vp1_X_1,vp1_X_2},
 		{},
 		*cdp);
-
-
 
 
         Trace("alethe-proof") << "Finished proof that (cl (not (N (X))) N(Y))" << std::endl;
-
-vp4_Y = nm->mkNode(Kind::OR, n_Y.notNode(), n_X);
-    std::vector<Node> vp1_Y_args = {nm->mkConstInt(Rational(1)),cy,cx};
-        success &=  addAletheStepFromOr(
-		AletheRule::HOLE,
-		vp4_Y,
+    Node vp1_Y_1 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2));
+    Node vp1_Y_2 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1));
+    Node vp2_Y = nm->mkNode(Kind::OR,n_X,nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2));
+     vp4_Y = nm->mkNode(Kind::OR,n_Y.notNode(),n_X);
+    
+    std::vector<Node> vp1_Y_1_args = {nm->mkNode(Kind::NEG,cy),cx};
+    std::vector<Node> vp1_Y_2_args = {nm->mkNode(Kind::NEG,cy),cx};
+    success &= addAletheStepFromOr(
+		AletheRule::LA_GENERIC,
+		vp1_Y_1,
 		{},
+		vp1_Y_1_args,
+		*cdp)
+     && addAletheStepFromOr(
+		AletheRule::LA_GENERIC,
+		vp1_Y_2,
+		{},
+		vp1_Y_2_args,
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::LA_DISEQUALITY,
+		vp2_Y,
+		{},
+		{},
+		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::RESOLUTION,
+		vp4_Y,
+		{vp2_Y,vp1_Y_1,vp1_Y_2},
 		{},
 		*cdp);
+
 
 
 
@@ -3783,6 +3835,7 @@ if (y1.getType() == nm->integerType()){
                              *cdp);
       }
       // Reflexivity over the quantified bodies
+      // This only works if the sets 
       Node vp = nm->mkNode(
           Kind::SEXPR, d_cl, nm->mkNode(Kind::EQUAL, res[0][1], res[1][1]));
       addAletheStep(AletheRule::REFL, vp, vp, {}, {}, *cdp);
