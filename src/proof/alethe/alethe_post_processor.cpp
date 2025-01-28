@@ -2030,13 +2030,21 @@ vp4_X: (cl (not (= nx1 nx2)) (= ny1 ny2))
 
 
 Trace("alethe-proof") << "HERE" << std::endl;
+
+    Rational cx_r = cx.getConst<Rational>();
+    Rational cy_r = cy.getConst<Rational>();
+    Node cx_real = nm->mkConstReal(-cx_r);
+    Node cy_real = nm->mkConstReal(-cy_r);
+
+
     Node vp1_X_1 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
     Node vp1_X_2 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
     Node vp2_X = nm->mkNode(Kind::OR,n_Y,nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1).notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2).notNode());
     vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
     
-    std::vector<Node> vp1_X_1_args = {nm->mkNode(Kind::NEG,cx),cy};
-    std::vector<Node> vp1_X_2_args = {nm->mkNode(Kind::NEG,cx),cy};
+
+    std::vector<Node> vp1_X_1_args = {cx_real,cy};
+    std::vector<Node> vp1_X_2_args = {cx_real,cy};
     success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
 		vp1_X_1,
@@ -2069,8 +2077,9 @@ Trace("alethe-proof") << "HERE" << std::endl;
     Node vp2_Y = nm->mkNode(Kind::OR,n_X,nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1).notNode(),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2).notNode());
      vp4_Y = nm->mkNode(Kind::OR,n_Y.notNode(),n_X);
     
-    std::vector<Node> vp1_Y_1_args = {nm->mkNode(Kind::NEG,cy),cx};
-    std::vector<Node> vp1_Y_2_args = {nm->mkNode(Kind::NEG,cy),cx};
+
+    std::vector<Node> vp1_Y_1_args = {cy_real,cx};
+    std::vector<Node> vp1_Y_2_args = {cy_real,cx};
     success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
 		vp1_Y_1,
