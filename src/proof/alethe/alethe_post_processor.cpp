@@ -1911,6 +1911,24 @@ vp2: (cl (= ny1 ny2) (not (<= y1 y2)) (not (<= y2 y1)))
 vp3: (cl (not (= x1 x2)) (= ny1 y2))
 
 
+Arguments: 
+
+cx >= 0 and cy >= 0:
+  vp_1_X_1  => cx, cy
+  vp_1_X_2  => -cx, cy
+cx >= 0 and cy < 0:
+  vp_1_X_1  => -cx, -cy
+  vp_1_X_2  => cx, -cy
+cx < 0 and cy >= 0:
+  vp_1_X_1  => cx, cy
+  vp_1_X_2  => -cx, cy
+cx < 0 and cy < 0:
+  vp_1_X_1  => -cx, -cy
+  vp_1_X_2  => cx, -cy
+
+So if cy < 0 then cy' = -cy, else cy' = cy
+For vp_1_X_1, if cy < 0 then cx' = -cx else cx
+For vp_1_X_2, if cy < 0 then cx' = cx else -cx 
 
 N(x1) = nx1_cu * nx1_tu + ... + nx1_c0 * nx1_t0 + d_x1
 N(x2) = nx2_cu * nx2_tu + ... + nx2_c0 * nx2_t0 + d_x2
@@ -1931,7 +1949,7 @@ T:
 
 vp1_X_1 by LA_GENERIC
 
-Arguments are: -cx, cy
+Arguments are: -cx, cy'. cy' is cy if cy >= 0 or -cy otherwise.
    (not (N(x1) = N(x2)))
    (N(y1) <= N(y2))
 
@@ -1948,26 +1966,26 @@ After Step 3:
 After Step 4 & 5:
 
    -(cx * (nx1_cu - nx2_cu) * nx1_tu + ... + cx * (nx1_c0 - nx2_c0) * nx1_t0)  = -cx * (d_x2 - d_x1)
-   (cy * (ny1_cu - ny2_cu) * ny1_tu + ... + cy * (ny1_c0 - ny2_c0) * ny1_t0)  = cy * (d_y2 - d_y1)
+   (cy' * (ny1_cu - ny2_cu) * ny1_tu + ... + cy * (ny1_c0 - ny2_c0) * ny1_t0)  = cy' * (d_y2 - d_y1)
 
 Add together:
 LHS is 
    (
    -(cx * (nx1_cu - nx2_cu) * ncx_tu + ... + cx * (nx1_c0 - nx2_c0) * ncx_t0)
    + 
-   (cy * (ny1_cu - ny2_cu) * ncy_tu + ... + cy * (ny1_c0 - ny2_c0) * ncy_t0)
+   (cy' * (ny1_cu - ny2_cu) * ncy_tu + ... + cy' * (ny1_c0 - ny2_c0) * ncy_t0)
   )
 which is -T[0]
 RHS is
   -(cx * (d_x2 - d_x1))
   +
-  (cy * (d_y2 - d_y1))
+  (cy' * (d_y2 - d_y1))
 =
   (cx * (-d_x2 + d_x1))
   +
-  (cy * -(-d_y2 + d_y1))
+  (cy' * -(-d_y2 + d_y1))
 = 
-  -(cy * (d_y1 - d_y2))
+  -(cy' * (d_y1 - d_y2))
   +
   (cx * (d_x1 - d_x2))
 which is -T[1]
@@ -2033,18 +2051,21 @@ Trace("alethe-proof") << "HERE" << std::endl;
 
     Rational cx_r = cx.getConst<Rational>();
     Rational cy_r = cy.getConst<Rational>();
-    Node cx_real = nm->mkConstReal(-cx_r);
-    Node cy_real = nm->mkConstReal(-cy_r);
 
+//So if cy < 0 then cy' = -cy, else cy' = cy
+//For vp_1_X_1, if cy < 0 then cx' = -cx else cx
+//For vp_1_X_2, if cy < 0 then cx' = cx else -cx 
+    Node cy_arg =  (cy_r < 0) ? nm->mkConstReal(-cy_r) : nm->mkConstReal(cy_r);
+    Node cx_arg1 = (cy_r < 0) ? nm->mkConstReal(-cx_r) : nm->mkConstReal(cx_r);
+    Node cx_arg2 = (cy_r < 0) ? nm->mkConstReal(cx_r) : nm->mkConstReal(-cx_r);
 
     Node vp1_X_1 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
     Node vp1_X_2 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
     Node vp2_X = nm->mkNode(Kind::OR,n_Y,nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1).notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2).notNode());
     vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
-    
 
-    std::vector<Node> vp1_X_1_args = {cx_real,cy};
-    std::vector<Node> vp1_X_2_args = {cx_real,cy};
+    std::vector<Node> vp1_X_1_args = {cx_arg1,cy_arg};
+    std::vector<Node> vp1_X_2_args = {cx_arg2,cy_arg};
     success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
 		vp1_X_1,
@@ -2077,9 +2098,13 @@ Trace("alethe-proof") << "HERE" << std::endl;
     Node vp2_Y = nm->mkNode(Kind::OR,n_X,nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1).notNode(),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2).notNode());
      vp4_Y = nm->mkNode(Kind::OR,n_Y.notNode(),n_X);
     
+    Node cx_arg =  (cx_r < 0) ? nm->mkConstReal(-cx_r) : nm->mkConstReal(cx_r);
+    Node cy_arg1 = (cx_r < 0) ? nm->mkConstReal(-cy_r) : nm->mkConstReal(cy_r);
+    Node cy_arg2 = (cx_r < 0) ? nm->mkConstReal(cy_r) : nm->mkConstReal(-cy_r);
 
-    std::vector<Node> vp1_Y_1_args = {cy_real,cx};
-    std::vector<Node> vp1_Y_2_args = {cy_real,cx};
+
+    std::vector<Node> vp1_Y_1_args = {cy_arg1,cx_arg};
+    std::vector<Node> vp1_Y_2_args = {cy_arg2,cx_arg};
     success &= addAletheStepFromOr(
 		AletheRule::LA_GENERIC,
 		vp1_Y_1,
