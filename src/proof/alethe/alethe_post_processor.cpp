@@ -1446,7 +1446,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	    vp3,
 	    nm->mkNode(Kind::SEXPR, d_cl, vp3),
 	    {vp2},
-	    rule_args2,
+	    {},
 	    *cdp) 
 	&& addAletheStep(
 	  AletheRule::TRANS,
@@ -1466,7 +1466,10 @@ bool AletheProofPostprocessCallback::update(Node res,
           Node vp7 = nm->mkNode(Kind::EQUAL, res[0], ti_tr_res0);
           Node vp8 = nm->mkNode(Kind::EQUAL, ti_tr_res1, res[1]);
 
-          std::vector<Node> rule_args = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType())};
+	  std::vector<Node> vp6_rule_args = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType()),res[0]};
+          std::vector<Node> vp8_rule_args = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType()),res[1]};
+
+
      //   ------- rule
     //     vp6             vp4
     //   ------- SYMM    ------- CONG      -------- rule 
@@ -1479,7 +1482,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	    vp6,
 	    nm->mkNode(Kind::SEXPR, d_cl, vp6),
 	    {},
-	    rule_args,
+	    vp6_rule_args,
 	    *cdp)
          && addAletheStep(
 	    AletheRule::SYMM,
@@ -1493,7 +1496,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	    vp8,
 	    nm->mkNode(Kind::SEXPR, d_cl, vp8),
 	    {},
-	    rule_args,
+	    vp8_rule_args,
 	    *cdp)
 	&& addAletheStep(
 	    AletheRule::CONG,
