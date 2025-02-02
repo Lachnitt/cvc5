@@ -300,16 +300,40 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
   TypeNode int_type = nm->integerType(); 
   std::vector<Node> evaluate_args = {nm->mkRawSymbol("\"evaluate\"", nm->sExprType())};
   std::vector<Node> linarith_args = {nm->mkRawSymbol("\"linarith\"", nm->sExprType())};
-  /*
-     (define-rule arith-to-real-uminus ((t Int)) (to_real (-x)) (- (to_real x)))
+  std::vector<Node> empty_args = {};
 
+  /*
+    polynom normalization
   */
-  std::vector<Node> to_real_uminus_args = {nm->mkRawSymbol("\"arith-to-real-uminus\"", nm->sExprType())};
-  std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib-add\"", nm->sExprType())};
-  std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib-minus\"", nm->sExprType())};
-  std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib-uminus\"", nm->sExprType())};
-  std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib-mult\"", nm->sExprType())};
-	
+  std::vector<Node> arith_poly_norm_uminus_args = {nm->mkRawSymbol("\"arith-poly-norm-uminus\"", nm->sExprType())};
+  std::vector<Node> arith_poly_norm_neg_args = {nm->mkRawSymbol("\"arith-poly-norm-neg\"", nm->sExprType())};
+  std::vector<Node> arith_poly_norm_sub_args = {nm->mkRawSymbol("\"arith-poly-norm-minus\"", nm->sExprType())};
+  std::vector<Node> arith_poly_norm_add_args = {nm->mkRawSymbol("\"arith-poly-norm-add\"", nm->sExprType())};
+  std::vector<Node> arith_poly_norm_mult_args = {nm->mkRawSymbol("\"arith-poly-norm-mult\"", nm->sExprType())};
+
+  /*
+     (define-rule arith-to-real-distrib-uminus-rev ((t Int)) (to_real (-x)) (- (to_real x)))
+     (define-rule arith-distrib-uminus-rev ((t Int)) (to_real (-x)) (- (to_real x)))
+  */
+  std::vector<Node> tr_distrib_uminus_rev_args = {nm->mkRawSymbol("\"arith-to-real-distrib-uminus-rev\"", nm->sExprType())};
+  std::vector<Node> uminus_rev_args = {nm->mkRawSymbol("\"arith-distrib-uminus-rev\"", nm->sExprType())};
+  /*
+     (define-rule arith-to-real-distrib-add ((x Int) (y Int)) (to_real (+ x y)) (+ (to_real x) (to_real y)))
+     (define-rule arith-to-real-distrib-minus ((x Int) (y Int)) (to_real (- x y)) (- (to_real x) (to_real y)))
+     (define-rule arith-to_real-distrib-uminus ((x Int)) (to_real (- x)) (- (to_real x)))
+     (define-rule arith-to_real-distrib-mult ((x Int) (y Int)) (to_real (* x y)) (* (to_real x) (to_real y)))
+  */
+  std::vector<Node> tr_distrib_add_args = {nm->mkRawSymbol("\"arith-to-real-distrib-add\"", nm->sExprType())};
+  std::vector<Node> tr_distrib_sub_args = {nm->mkRawSymbol("\"arith-to-real-distrib-minus\"", nm->sExprType())};
+  std::vector<Node> tr_distrib_neg_args = {nm->mkRawSymbol("\"arith-to-real-distrib-uminus\"", nm->sExprType())};
+  std::vector<Node> tr_distrib_mult_args = {nm->mkRawSymbol("\"arith-to-real-distrib-mult\"", nm->sExprType())};
+  /*
+     (define-rule arith-distrib-mult ((x ?) (xs ? :list)) (* (* xs) x) (* xs x))
+  */
+  std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib_add\"", nm->sExprType())};
+  std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib_minus\"", nm->sExprType())};
+  std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib_uminus\"", nm->sExprType())};
+  std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib_mult\"", nm->sExprType())};
 
   Trace("alethe-poly-norm")
     << "mkPolyNorm normalize n = " << n << " \n";
@@ -488,8 +512,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
           //    ------------------------------------------------------- TRANS
           //                               vp3
           //
-          //    RARE_REWRITE^1: arith-to-real-uminus
-          //    RARE_REWRITE^2: linarith
+          //    RARE_REWRITE^1: arith-to-real-distrib-uminus
+          //    RARE_REWRITE^2: arith-poly-norm-uminus
           //
           //   b) If cur is a real:
           //   prem: cur[0] = N(cur[0])          already proven
@@ -527,11 +551,12 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
             if (is_int) {
               Node vp1a = nm->mkNode(Kind::EQUAL, new_cur, nm->mkNode(k,new_cur_0));
               Node vp1b = nm->mkNode(Kind::EQUAL, nm->mkNode(k,new_cur_0), nm->mkNode(k,to_be_added[0]));
+              tr_distrib_uminus_rev_args.push_back(new_cur_0);
 	      success &= addAletheStep(AletheRule::RARE_REWRITE,
                            vp1a,
                            nm->mkNode(Kind::SEXPR, d_cl, vp1a),
                            {},
-                           to_real_uminus_args,
+                           tr_distrib_uminus_rev_args,
                            *cdp)
 		&&  addAletheStep(AletheRule::CONG,
                            vp1b,
@@ -545,6 +570,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                            {vp1a,vp1b},
                            {},
                            *cdp);
+              tr_distrib_uminus_rev_args.pop_back();
 	    }
             else {
 	      success &= addAletheStep(AletheRule::CONG,
@@ -561,7 +587,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                            vp2,
                            nm->mkNode(Kind::SEXPR, d_cl, vp2),
                            {},
-                           linarith_args,
+                           arith_poly_norm_uminus_args,
                            *cdp)
 		&& addAletheStep(AletheRule::TRANS,
                            vp3,
@@ -594,13 +620,13 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
             // intuitively, because tr_t_0 = tr_r_0 and tr_r_0 = N(tr_r_0) and N(tr_r_0) = N(tr_t_0)
 	  
 	    // if is_int:
-	    //   vp3a  (= u_i t_i)          by rare rewrite arith distrib, note this is on ints
+	    //   vp3a  (= u_i t_i)          by rare rewrite arith_distrib_k, args are t_{i-1} and r_i, note this is on ints
             //   vp3   (= tr_u_i tr_t_i)    by cong with vp3a
 	    // otherwise,
-            //   vp3   (= tr_u_i tr_t_i)    by rare rewrite distrib
+            //   vp3   (= tr_u_i tr_t_i)    by rare rewrite arith_distrib_k, args are t_{i-1} and r_i
 
-	    // if is_int:		
-            //   vp5a  (= tr_u_i (k (to_real t_{i-1}) (to_real(r_i))))    by hole 
+	    // if is_int:
+            //   vp5a  (= tr_u_i (k (to_real t_{i-1}) (to_real(r_i))))    by rare-rewrite on vp5a1 
             //   vp5b  (= (k (to_real t_{i-1}) (to_real(r_i))) (k (N(to_real t_{i-1})) (N(to_real r_i))))    by cong k with vp1 vp2 
             //   vp5c  (= (k (N(to_real t_{i-1})) (N(to_real r_i))) r_v_i)    by hole 
             //   vp5   (= tr_u_i tr_v_i)      by trans vp5a vp5b vp5c 
@@ -630,6 +656,24 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 	    // Let N(t_{i-1}) = a_s' * x_s' + ... + a_n * x_n
 	    // Let N(r_i) = b_s'' * x_s'' + ... + a_m * x_m
 	    // Let N(t_i) = c_s * x_s + ... + c_k * x_k
+
+            std::vector<Node> arith_poly_norm_k_args = 
+			(k == Kind::ADD) ? arith_poly_norm_add_args : 
+			(k == Kind::SUB) ? arith_poly_norm_sub_args :
+			(k == Kind::NEG) ? arith_poly_norm_neg_args :
+			(k == Kind::MULT || k == Kind::NONLINEAR_MULT) ? arith_poly_norm_mult_args : distrib_mult_args;
+            std::vector<Node> arith_distrib_k_args =
+			(k == Kind::ADD) ? distrib_add_args : 
+			(k == Kind::SUB) ? distrib_sub_args :
+			(k == Kind::NEG) ? distrib_neg_args :
+			(k == Kind::MULT || k == Kind::NONLINEAR_MULT) ? distrib_mult_args : distrib_mult_args;
+            std::vector<Node> arith_tr_distrib_k_args =
+			(k == Kind::ADD) ? tr_distrib_add_args : 
+			(k == Kind::SUB) ? tr_distrib_sub_args :
+			(k == Kind::NEG) ? tr_distrib_neg_args :
+			(k == Kind::MULT || k == Kind::NONLINEAR_MULT) ? tr_distrib_mult_args : tr_distrib_mult_args;
+
+
 
             Trace("alethe-poly-norm-1") << "... cur " << cur << " \n";
             Trace("alethe-poly-norm-1") << "... to_be_added " << to_be_added << " \n";
@@ -689,19 +733,17 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                 //   vp3   (= tr_u_i tr_t_i)    by rare rewrite distrib
 	        Node vp3 = nm->mkNode(Kind::EQUAL,tr_ui,tr_ti);
 		std::vector<Node> vp3_children = {};
+		arith_distrib_k_args.push_back(timinus1);
+		arith_distrib_k_args.push_back(ri);
 	        if (is_int)
                 {
                   Node vp3a = nm->mkNode(Kind::EQUAL,ui,ti);
 		  vp3_children.push_back(vp3a);
-		  std::vector<Node> vp3a_args = (k == Kind::ADD) ? distrib_add_args : 
-			(k == Kind::SUB) ? distrib_sub_args :
-			(k == Kind::NEG) ? distrib_neg_args :
-			(k == Kind::MULT || k == Kind::NONLINEAR_MULT) ? distrib_mult_args : distrib_mult_args;
                   success &= addAletheStep(AletheRule::RARE_REWRITE,
                                            vp3a,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp3a),
                                            {},
-                                           vp3a_args,
+                                           arith_distrib_k_args,
                                            *cdp);
                
 	        }
@@ -709,8 +751,10 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                                            vp3,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp3),
                                            vp3_children,
-                                           evaluate_args,
+                                           (is_int ? empty_args : arith_distrib_k_args),
                                            *cdp);
+		arith_distrib_k_args.pop_back();
+		arith_distrib_k_args.pop_back();
                 Trace("alethe-poly-norm-1") << ".... finished proving (= tr_u_i tr_t_i) " << " \n";
 
 	        // vp4   (= tr_t_i tr_u_i)    by symm vp3
@@ -738,11 +782,13 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                   Node vp5b = nm->mkNode(Kind::EQUAL,nm->mkNode(k,tr_timinus1,tr_ri),nm->mkNode(k,n_tr_timinus1,n_tr_ri));
                   Node vp5c = nm->mkNode(Kind::EQUAL,nm->mkNode(k,n_tr_timinus1,n_tr_ri),tr_vi);
 	          vp5_children.insert(vp5_children.end(), { vp5a, vp5b, vp5c });
+                  arith_tr_distrib_k_args.push_back(tr_timinus1);
+                  arith_tr_distrib_k_args.push_back(tr_ri);
                   success &= addAletheStep(AletheRule::RARE_REWRITE,
 				  vp5a,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp5a),
                                            {},
-                                           evaluate_args,
+                                           arith_tr_distrib_k_args,
                                            *cdp)
                     && addAletheStep(AletheRule::CONG,
                                            vp5b,
@@ -758,6 +804,8 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                                            *cdp);
                
 
+                  arith_tr_distrib_k_args.pop_back();
+                  arith_tr_distrib_k_args.pop_back();
 
 	        }
 		else {
@@ -1439,7 +1487,6 @@ bool AletheProofPostprocessCallback::update(Node res,
         Node vp2 = nm->mkNode(Kind::EQUAL, tr_res1, RHS);
         Node vp3 = nm->mkNode(Kind::EQUAL, RHS, tr_res1);
         Node vp4 = nm->mkNode(Kind::EQUAL, tr_res0, tr_res1);
-        std::vector<Node> rule_args2 = {nm->mkRawSymbol("\"arith-to-int-to-real\"", nm->sExprType())};
 
 	success &= addAletheStep(
 	    AletheRule::SYMM,
