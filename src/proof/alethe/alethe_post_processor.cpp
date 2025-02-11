@@ -635,21 +635,21 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 
 	    // vp4   (= tr_t_i tr_u_i)    by symm vp3
 	    // vp6   (= tr_t_i tr_v_i)    by trans with vp4 vp5 
-	    // vp7   (= tr_v_i N(tr_t_i)) this is done by la_generic see below 
+	    // vp7   (= tr_v_i N(tr_t_i)) this is done by la_generic, for the ADD case see below 
             // vp8   (= tr_t_i N(tr_t_i)) by trans vp6 vp7
 
 
             // For k=ADD:
 	    // Let N(t_{i-1}) = a_s' * x_s' + ... + a_n * x_n
-	    // Let N(r_i) = b_s'' * x_s'' + ... + a_m * x_m
+	    // Let N(r_i) = b_s'' * x_s'' + ... + b_m * x_m
 	    // Let N(t_i) = c_s * x_s + ... + c_k * x_k
-	    // vp6a   (= (= (k N(t_{i-1}) N(r_i)) N(t_i)) (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i)))) by la_rw_eq
-	    // vp6b   (>= (k N(t_{i-1}) N(r_i)) N(t_i)) by la_generic 
-	    // vp6c   (<= (k N(t_{i-1}) N(r_i)) N(t_i)) by la_generic 
-	    // vp6d   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))), (not (<= (k N(t_{i-1}) N(r_i)) N(t_i))), (not (>= (k N(t_{i-1}) N(r_i)) N(t_i))) by and_neg  
-	    // vp6e   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))) by resolution on vp6d vp6b vp6c
-	    // vp6f   (= (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))) (= (k N(t_{i-1}) N(r_i)) N(t_i))) by symm on vp6a
-	    // vp6    (= (k N(t_{i-1}) N(r_i)) N(t_i)) by trans vp6e vp7e
+	    // vp7a   (>= (k N(t_{i-1}) N(r_i)) N(t_i)) by la_generic, arguments 1
+	    // vp7b   (<= (k N(t_{i-1}) N(r_i)) N(t_i)) by la_generic, arguments 1
+	    // vp7c   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))), (not (<= (k N(t_{i-1}) N(r_i)) N(t_i))), (not (>= (k N(t_{i-1}) N(r_i)) N(t_i))) by and_neg
+	    // vp7d   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))) by resolution on vp7c vp7a vp7b
+	    // vp7e   (= (= (k N(t_{i-1}) N(r_i)) N(t_i)) (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i)))) by la_rw_eq
+	    // vp7f   (= (k N(t_{i-1}) N(r_i)) N(t_i)), (not (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i)))) by equiv2
+	    // vp7    (= (k N(t_{i-1}) N(r_i)) N(t_i)) by resolution vp7d vp7f
 
 
             // For k=MULT:
@@ -775,15 +775,15 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 	        // otherwise,
                 //   vp5   (= tr_u_i tr_v_i)    by cong k with vp1 vp2 
 	        Node vp5 = nm->mkNode(Kind::EQUAL,tr_ui,tr_vi);
-		std::vector<Node> vp5_children = {};
+		std::vector<Node> vp5_children = {nm->mkConstReal(Rational(1))};
 	        if (is_int)
                 {
                   Node vp5a = nm->mkNode(Kind::EQUAL,tr_ui,nm->mkNode(k,tr_timinus1,tr_ri));
                   Node vp5b = nm->mkNode(Kind::EQUAL,nm->mkNode(k,tr_timinus1,tr_ri),nm->mkNode(k,n_tr_timinus1,n_tr_ri));
                   Node vp5c = nm->mkNode(Kind::EQUAL,nm->mkNode(k,n_tr_timinus1,n_tr_ri),tr_vi);
 	          vp5_children.insert(vp5_children.end(), { vp5a, vp5b, vp5c });
-                  arith_tr_distrib_k_args.push_back(tr_timinus1);
-                  arith_tr_distrib_k_args.push_back(tr_ri);
+                  arith_tr_distrib_k_args.push_back(timinus1);
+                  arith_tr_distrib_k_args.push_back(ri);
                   success &= addAletheStep(AletheRule::RARE_REWRITE,
 				  vp5a,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp5a),
@@ -832,12 +832,76 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                                            {vp4,vp5},
                                            {},
                                            *cdp);
-                success &= addAletheStep(AletheRule::RARE_REWRITE,
+		if (k == Kind::ADD){
+
+            	// For k=ADD:
+	    	// vp7a   (<= N(t_i) (k N(t_{i-1}) N(r_i))) by la_generic, arguments 1
+	    	// vp7b   (<= (k N(t_{i-1}) N(r_i)) N(t_i)) by la_generic, arguments 1
+	    	// vp7c   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (<= (N(t_i)) (k N(t_{i-1}) N(r_i)))), (not (<= (k N(t_{i-1}) N(r_i)) N(t_i))), (not (<= N(t_i) (k N(t_{i-1}) N(r_i)))) by and_neg
+	    	// vp7d   (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (>= (k N(t_{i-1}) N(r_i)) N(t_i))) by resolution on vp7c vp7a vp7b
+	    	// vp7e   (= (= (k N(t_{i-1}) N(r_i)) N(t_i)) (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (<= N(t_i) (k N(t_{i-1}) N(r_i))))) by la_rw_eq
+	    	// vp7f   (= (k N(t_{i-1}) N(r_i)) N(t_i)), (not (and (<= (k N(t_{i-1}) N(r_i)) N(t_i)) (<= (k N(t_{i-1}) N(r_i)) N(t_i)))) by equiv2
+	    	// vp7    (= (k N(t_{i-1}) N(r_i)) N(t_i)) by resolution vp7d vp7f
+
+		  std::vector<Node> vp7_args = {nm->mkConstReal(Rational(1))};
+                  Node vp7a = nm->mkNode(Kind::LEQ, tr_vi, n_tr_ti); 
+                  Node vp7b = nm->mkNode(Kind::LEQ, n_tr_ti, tr_vi); 
+                  Node vp7d = nm->mkNode(Kind::AND,vp7a,vp7b); 
+
+                  Node vp7c = nm->mkNode(Kind::OR, vp7d, vp7a.notNode(), vp7b.notNode()); 
+                  Node vp7e = nm->mkNode(Kind::EQUAL, vp7, vp7d); 
+                  Node vp7f = nm->mkNode(Kind::OR, vp7, vp7d.notNode()); 
+
+                  success &= addAletheStep(AletheRule::LA_GENERIC,
+                                           vp7a,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp7a),
+                                           {},
+                                           vp7_args,
+                                           *cdp)
+                    &&  addAletheStep(AletheRule::LA_GENERIC,
+                                           vp7b,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp7b),
+                                           {},
+                                           vp7_args,
+                                           *cdp)
+		    &&  addAletheStepFromOr(AletheRule::AND_NEG,
+                                           vp7c,
+                                           {},
+                                           {},
+                                           *cdp)
+		    &&  addAletheStep(AletheRule::RESOLUTION,
+                                           vp7d,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp7d),
+                                           {vp7c, vp7a, vp7b},
+                                           {},
+                                           *cdp)
+		     &&  addAletheStep(AletheRule::LA_RW_EQ,
+                                           vp7e,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp7e),
+                                           {},
+                                           {},
+                                           *cdp)
+  		     &&  addAletheStepFromOr(AletheRule::EQUIV2,
+                                           vp7f,
+                                           {vp7e},
+                                           {},
+                                           *cdp)
+		     &&  addAletheStep(AletheRule::RESOLUTION,
+                                           vp7,
+                                           nm->mkNode(Kind::SEXPR, d_cl, vp7),
+                                           {vp7d,vp7f},
+                                           {},
+                                           *cdp);
+                }
+		else{
+                  success &= addAletheStep(AletheRule::RARE_REWRITE,
                                            vp7,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp7),
                                            {},
                                            linarith_args,
                                            *cdp);
+ 
+		}
                 success &= addAletheStep(AletheRule::TRANS,
                                            vp8,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp8),
@@ -2034,7 +2098,7 @@ Node vp4_Y;
 vp1_X_1: (cl (not (x1 = x2)) (y1 <= y2))
 vp1_X_2: (cl (not (x1 = x2)) (y2 <= y1))
 
-vp2: (cl (= ny1 ny2) (not (<= y1 y2)) (not (<= y2 y1)))
+vp2: (cl (= ny1 ny2) (not (<= y1 y2)) (not (<= y2 y1))), by LA_DISEQUALITY
 
 vp3: (cl (not (= x1 x2)) (= ny1 y2))
 
@@ -2042,17 +2106,17 @@ vp3: (cl (not (= x1 x2)) (= ny1 y2))
 Arguments: 
 
 cx >= 0 and cy >= 0:
-  vp_1_X_1  => cx, cy
-  vp_1_X_2  => -cx, cy
+  vp_1_X_1  => -cx, cy
+  vp_1_X_2  => cx, cy
 cx >= 0 and cy < 0:
-  vp_1_X_1  => -cx, -cy
-  vp_1_X_2  => cx, -cy
+  vp_1_X_1  => cx, -cy
+  vp_1_X_2  => -cx, -cy
 cx < 0 and cy >= 0:
-  vp_1_X_1  => cx, cy
-  vp_1_X_2  => -cx, cy
+  vp_1_X_1  => -cx, cy
+  vp_1_X_2  => cx, cy
 cx < 0 and cy < 0:
-  vp_1_X_1  => -cx, -cy
-  vp_1_X_2  => cx, -cy
+  vp_1_X_1  => cx, -cy
+  vp_1_X_2  => -cx, -cy
 
 So if cy < 0 then cy' = -cy, else cy' = cy
 For vp_1_X_1, if cy < 0 then cx' = -cx else cx
@@ -2184,12 +2248,12 @@ Trace("alethe-proof") << "HERE" << std::endl;
 //For vp_1_X_1, if cy < 0 then cx' = -cx else cx
 //For vp_1_X_2, if cy < 0 then cx' = cx else -cx 
     Node cy_arg =  (cy_r < 0) ? nm->mkConstReal(-cy_r) : nm->mkConstReal(cy_r);
-    Node cx_arg1 = (cy_r < 0) ? nm->mkConstReal(-cx_r) : nm->mkConstReal(cx_r);
-    Node cx_arg2 = (cy_r < 0) ? nm->mkConstReal(cx_r) : nm->mkConstReal(-cx_r);
+    Node cx_arg1 = (cy_r < 0) ? nm->mkConstReal(cx_r) : nm->mkConstReal(-cx_r);
+    Node cx_arg2 = (cy_r < 0) ? nm->mkConstReal(-cx_r) : nm->mkConstReal(cx_r);
 
-    Node vp1_X_1 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2));
-    Node vp1_X_2 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1));
-    Node vp2_X = nm->mkNode(Kind::OR,n_Y,nm->mkNode(Kind::GEQ,n_tr_y2,n_tr_y1).notNode(),nm->mkNode(Kind::GEQ,n_tr_y1,n_tr_y2).notNode());
+    Node vp1_X_1 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2));
+    Node vp1_X_2 = nm->mkNode(Kind::OR,n_X.notNode(),nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1));
+    Node vp2_X = nm->mkNode(Kind::OR,n_Y,nm->mkNode(Kind::LEQ,n_tr_y1,n_tr_y2).notNode(),nm->mkNode(Kind::LEQ,n_tr_y2,n_tr_y1).notNode());
     vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
 
     std::vector<Node> vp1_X_1_args = {cx_arg1,cy_arg};
@@ -2206,12 +2270,20 @@ Trace("alethe-proof") << "HERE" << std::endl;
 		{},
 		vp1_X_2_args,
 		*cdp)
-       && addAletheStepFromOr(
+       && addAletheStep(
 		AletheRule::LA_DISEQUALITY,
-		vp2_X,
+		nm->mkNode(Kind::SEXPR,d_cl,vp2_X),
+		nm->mkNode(Kind::SEXPR,d_cl,vp2_X),
 		{},
 		{},
 		*cdp)
+       && addAletheStepFromOr(
+		AletheRule::OR,
+		vp2_X,
+		{nm->mkNode(Kind::SEXPR,d_cl,vp2_X)},
+		{},
+		*cdp)
+
        && addAletheStepFromOr(
 		AletheRule::RESOLUTION,
 		vp4_X,
@@ -2221,14 +2293,14 @@ Trace("alethe-proof") << "HERE" << std::endl;
 
 
         Trace("alethe-proof") << "Finished proof that (cl (not (N (X))) N(Y))" << std::endl;
-    Node vp1_Y_1 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2));
-    Node vp1_Y_2 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1));
-    Node vp2_Y = nm->mkNode(Kind::OR,n_X,nm->mkNode(Kind::GEQ,n_tr_x2,n_tr_x1).notNode(),nm->mkNode(Kind::GEQ,n_tr_x1,n_tr_x2).notNode());
+    Node vp1_Y_1 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::LEQ,n_tr_x1,n_tr_x2));
+    Node vp1_Y_2 = nm->mkNode(Kind::OR,n_Y.notNode(),nm->mkNode(Kind::LEQ,n_tr_x2,n_tr_x1));
+    Node vp2_Y = nm->mkNode(Kind::OR,n_X,nm->mkNode(Kind::LEQ,n_tr_x1,n_tr_x2).notNode(),nm->mkNode(Kind::LEQ,n_tr_x2,n_tr_x1).notNode());
      vp4_Y = nm->mkNode(Kind::OR,n_Y.notNode(),n_X);
     
     Node cx_arg =  (cx_r < 0) ? nm->mkConstReal(-cx_r) : nm->mkConstReal(cx_r);
-    Node cy_arg1 = (cx_r < 0) ? nm->mkConstReal(-cy_r) : nm->mkConstReal(cy_r);
-    Node cy_arg2 = (cx_r < 0) ? nm->mkConstReal(cy_r) : nm->mkConstReal(-cy_r);
+    Node cy_arg1 = (cx_r < 0) ? nm->mkConstReal(cy_r) : nm->mkConstReal(-cy_r);
+    Node cy_arg2 = (cx_r < 0) ? nm->mkConstReal(-cy_r) : nm->mkConstReal(cy_r);
 
 
     std::vector<Node> vp1_Y_1_args = {cy_arg1,cx_arg};
@@ -2245,10 +2317,17 @@ Trace("alethe-proof") << "HERE" << std::endl;
 		{},
 		vp1_Y_2_args,
 		*cdp)
-       && addAletheStepFromOr(
+       && addAletheStep(
 		AletheRule::LA_DISEQUALITY,
-		vp2_Y,
+		nm->mkNode(Kind::SEXPR,d_cl,vp2_Y),
+		nm->mkNode(Kind::SEXPR,d_cl,vp2_Y),
 		{},
+		{},
+		*cdp)
+      && addAletheStepFromOr(
+		AletheRule::OR,
+		vp2_Y,
+		{nm->mkNode(Kind::SEXPR,d_cl,vp2_Y)},
 		{},
 		*cdp)
        && addAletheStepFromOr(
