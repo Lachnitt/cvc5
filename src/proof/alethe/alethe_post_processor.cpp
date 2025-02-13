@@ -329,13 +329,15 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
   std::vector<Node> tr_distrib_neg_args = {nm->mkRawSymbol("\"arith-to-real-distrib-uminus\"", nm->sExprType())};
   std::vector<Node> tr_distrib_mult_args = {nm->mkRawSymbol("\"arith-to-real-distrib-mult\"", nm->sExprType())};
   /*
-     (define-rule* arith-distrib-add ((x ?) (xs ? :list) (y ?)) (+ (+ xs x) y) (+ (+ xs) x y))
+     (define-rule arith-distrib-add ((x ?) (xs ? :list) (y ?)) (+ (+ xs x) y) (+ xs (x + y)))
      (define-rule arith-distrib-add ((x ?) (xs ? :list)) (+ (+ xs) x) (+ xs x))
   */
   std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib_add\"", nm->sExprType())};
   std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib_minus\"", nm->sExprType())};
   std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib_uminus\"", nm->sExprType())};
   std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib_mult\"", nm->sExprType())};
+  
+
 
   Trace("alethe-poly-norm")
     << "mkPolyNorm normalize n = " << n << " \n";
@@ -903,7 +905,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
                                            vp7,
                                            nm->mkNode(Kind::SEXPR, d_cl, vp7),
                                            {},
-                                           linarith_args,
+                                           arith_poly_norm_k_args,
                                            *cdp);
  
 		}
