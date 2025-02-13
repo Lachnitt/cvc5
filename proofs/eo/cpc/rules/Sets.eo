@@ -1,5 +1,7 @@
 (include "../theories/Sets.eo")
 
+;;;;; ProofRewriteRule::SETS_IS_EMPTY_EVAL
+
 ; define: $set_is_empty_eval
 ; args:
 ; - t (Set T): The set to check.
@@ -31,6 +33,8 @@
   :conclusion (= (set.is_empty t) b)
 )
 
+;;;;; ProofRule::SETS_SINGLETON_INJ
+
 ; rule: sets_singleton_inj
 ; implements: ProofRule::SETS_SINGLETON_INJ
 ; premises:
@@ -40,6 +44,8 @@
   :premises ((= (set.singleton a) (set.singleton b)))
   :conclusion (= a b)
 )
+
+;;;;; ProofRule::SETS_EXT
 
 ; rule: sets_ext
 ; implements: ProofRule::SETS_EXT
@@ -53,30 +59,30 @@
   :conclusion (not (= (set.member (@sets_deq_diff a b) a) (set.member (@sets_deq_diff a b) b)))
 )
 
+;;;;; ProofRewriteRule::SETS_INSERT_ELIM
 
-; rule: sets_filter_down
-; implements: ProofRewriteRule::SETS_FILTER_DOWN
-; premises:
-; - mem: A membership of element x into a set filter term.
-; conclusion: >
-;   The membership holds for the set for which we are filtering, and the
-;   predicate is true for x.
-(declare-rule sets_filter_down ((T Type) (P (-> T Bool)) (x T) (S (Set T)))
-  :premises ((set.member x (set.filter P S)))
-  :conclusion (and (set.member x S) (P x))
+; program: $set_eval_insert
+; args:
+; - es @List: The list of elements
+; - t (Set T): The set to insert into.
+; return: >
+;   The union of elements in es with t.
+(program $set_eval_insert ((T Type) (x T) (xs @List :list) (t (Set T)))
+  (@List (Set T)) (Set T)
+  (
+    (($set_eval_insert (@list x xs) t) (set.union (set.singleton x) ($set_eval_insert xs t)))
+    (($set_eval_insert @list.nil t)    t)
+  )
 )
 
-; rule: sets_filter_up
-; implements: ProofRewriteRule::SETS_FILTER_UP
+; rule: sets-insert-elim
+; implements: ProofRewriteRule::SETS_INSERT_ELIM
 ; args:
-; - P (-> T Bool): The predicate to filter on.
-; premises:
-; - mem: A membership of element x into a set term.
-; conclusion: >
-;   The membership into the same set, filtered by P, holds if and only if the
-;   predicate is true for x.
-(declare-rule sets_filter_up ((T Type) (P (-> T Bool)) (x T) (S (Set T)))
-  :premises ((set.member x S))
-  :args (P)
-  :conclusion (= (set.member x (set.filter P S)) (P x))
+; - eq Bool: The equality to prove with this rule.
+; requires: the union of the elements in the first argument with the last argument equal the right hand side.
+; conclusion: the equality between a and b.
+(declare-rule sets-insert-elim ((T Type) (s (Set T)) (es @List) (t (Set T)))
+  :args ((= (set.insert es s) t))
+  :requires ((($set_eval_insert es s) t))
+  :conclusion (= (set.insert es s) t)
 )

@@ -1,10 +1,10 @@
 /******************************************************************************
  * Top contributors (to current version):
- *   Yoni Zohar, Aina Niemetz, Makai Mann
+ *   Yoni Zohar, Aina Niemetz, Andrew Reynolds
  *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2024 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -25,9 +25,9 @@
 #include "expr/node_algorithm.h"
 #include "expr/node_traversal.h"
 #include "expr/skolem_manager.h"
-#include "options/option_exception.h"
 #include "options/uf_options.h"
 #include "proof/proof.h"
+#include "smt/logic_exception.h"
 #include "theory/bv/theory_bv_utils.h"
 #include "theory/logic_info.h"
 #include "theory/rewriter.h"
@@ -323,7 +323,7 @@ Node IntBlaster::translateWithChildren(
     */
    if (childrenTypesChanged(original) && logicInfo().isHigherOrder())
    {
-     throw OptionException("bv-to-int does not support higher order logic ");
+     throw LogicException("bv-to-int does not support higher order logic ");
    }
   // Translate according to the kind of the original node.
   switch (oldKind)
@@ -665,7 +665,7 @@ Node IntBlaster::translateWithChildren(
       returnNode = d_nm->mkNode(oldKind, translated_children);
       if (d_mode == options::SolveBVAsIntMode::BITWISE)
       {
-        throw OptionException(
+        throw LogicException(
             "--solve-bv-as-int=bitwise does not support quantifiers");
       }
       break;
@@ -789,7 +789,8 @@ Node IntBlaster::translateNoChildren(Node original,
         // they will be added once the quantifier itself is handled.
         std::stringstream ss;
         ss << original;
-        translation = d_nm->mkBoundVar(ss.str() + "_int", d_nm->integerType());
+        translation =
+            NodeManager::mkBoundVar(ss.str() + "_int", d_nm->integerType());
       }
       else
       {
@@ -868,7 +869,7 @@ Node IntBlaster::translateFunctionSymbol(Node bvUF,
   {
     // Each bit-vector argument is casted to a natural number
     // Other arguments are left intact.
-    Node fresh_bound_var = d_nm->mkBoundVar(d);
+    Node fresh_bound_var = NodeManager::mkBoundVar(d);
     args.push_back(fresh_bound_var);
     Node castedArg = args[i];
     if (d.isBitVector())
@@ -946,7 +947,7 @@ Node IntBlaster::reconstructNode(Node originalNode,
   // first, we adjust the children of the node as needed.
   // re-construct the term with the adjusted children.
   Kind oldKind = originalNode.getKind();
-  NodeBuilder builder(oldKind);
+  NodeBuilder builder(nodeManager(), oldKind);
   if (originalNode.getMetaKind() == kind::metakind::PARAMETERIZED)
   {
     builder << originalNode.getOperator();

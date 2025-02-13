@@ -4,7 +4,7 @@
  *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2024 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -57,6 +57,10 @@ CegInstantiator::CegInstantiator(Env& env,
       d_is_nested_quant(false),
       d_effort(CEG_INST_EFFORT_NONE)
 {
+  if (d_env.isTheoryProofProducing())
+  {
+    d_vwpg.reset(new ValidWitnessProofGenerator(env));
+  }
 }
 
 CegInstantiator::~CegInstantiator() {
@@ -1055,7 +1059,10 @@ bool CegInstantiator::doAddInstantiation(std::vector<Node>& vars,
     // add the existentials, if any witness term was eliminated
     for (const Node& q : exists)
     {
-      d_qim.addPendingLemma(q, InferenceId::QUANTIFIERS_CEGQI_WITNESS);
+      d_qim.addPendingLemma(q,
+                            InferenceId::QUANTIFIERS_CEGQI_WITNESS,
+                            LemmaProperty::NONE,
+                            d_vwpg.get());
     }
     return true;
   }

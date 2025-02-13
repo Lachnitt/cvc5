@@ -4,7 +4,7 @@
  *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2024 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -812,6 +812,8 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
     toStream(out, n[0], nullptr, toDepth);
     out << " ";
     bool needsPrintAnnot = false;
+    size_t dag = options::ioutils::getDagThresh(out);
+    size_t newDepth = (toDepth < 0 ? toDepth : toDepth - 1);
     std::stringstream annot;
     if (n.getNumChildren() == 3)
     {
@@ -821,14 +823,22 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
         if (nck == Kind::INST_PATTERN)
         {
           needsPrintAnnot = true;
-          annot << " :pattern ";
-          toStream(annot, nc, lbind, toDepth);
+          annot << " :pattern (";
+          for (size_t i = 0, nchild = nc.getNumChildren(); i < nchild; i++)
+          {
+            if (i > 0)
+            {
+              annot << " ";
+            }
+            toStream(annot, nc[i], newDepth, dag);
+          }
+          annot << ")";
         }
         else if (nck == Kind::INST_NO_PATTERN)
         {
           needsPrintAnnot = true;
           annot << " :no-pattern ";
-          toStream(annot, nc[0], lbind, toDepth);
+          toStream(annot, nc[0], newDepth, dag);
         }
         else if (nck == Kind::INST_POOL || nck == Kind::INST_ADD_TO_POOL
                  || nck == Kind::SKOLEM_ADD_TO_POOL)
@@ -850,7 +860,7 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
             {
               annot << " ";
             }
-            toStream(annot, nc[i], lbind, toDepth);
+            toStream(annot, nc[i], newDepth, dag);
           }
           annot << ")";
         }
@@ -869,7 +879,7 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
             for (size_t j = 1, nchild = nc.getNumChildren(); j < nchild; j++)
             {
               annot << " ";
-              toStream(annot, nc[j], lbind, toDepth);
+              toStream(annot, nc[j], newDepth, dag);
             }
           }
         }
@@ -882,8 +892,7 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
       out << "(! ";
       annot << ")";
     }
-    size_t dag = options::ioutils::getDagThresh(out);
-    toStream(out, n[1], toDepth < 0 ? toDepth : toDepth - 1, dag);
+    toStream(out, n[1], newDepth, dag);
     out << annot.str() << ")";
     return true;
   }
@@ -1116,6 +1125,10 @@ void Smt2Printer::toStream(std::ostream& out,
       {
         visit.pop_back();
         out << "(...)";
+        if (cur.getNumChildren() > 0)
+        {
+          out << ')';
+        }
         continue;
       }
     }
@@ -1146,6 +1159,8 @@ std::string Smt2Printer::smtKindString(Kind k)
     case Kind::EQUAL: return "=";
     case Kind::DISTINCT: return "distinct";
     case Kind::SEXPR: break;
+
+    case Kind::TYPE_OF: return "@type_of";
 
     // bool theory
     case Kind::NOT: return "not";
@@ -1313,6 +1328,7 @@ std::string Smt2Printer::smtKindString(Kind k)
     case Kind::RELATION_GROUP: return "rel.group";
     case Kind::RELATION_AGGREGATE: return "rel.aggr";
     case Kind::RELATION_PROJECT: return "rel.project";
+    case Kind::SET_EMPTY_OF_TYPE: return "@set.empty_of_type";
 
     // bag theory
     case Kind::BAG_TYPE: return "Bag";
@@ -1436,6 +1452,7 @@ std::string Smt2Printer::smtKindString(Kind k)
     case Kind::SEQUENCE_TYPE: return "Seq";
     case Kind::SEQ_UNIT: return "seq.unit";
     case Kind::SEQ_NTH: return "seq.nth";
+    case Kind::SEQ_EMPTY_OF_TYPE: return "@seq.empty_of_type";
 
     // sep theory
     case Kind::SEP_STAR: return "sep";
@@ -2266,7 +2283,7 @@ std::string Smt2Printer::sygusGrammarString(const TypeNode& t)
             TypeNode argType = cons[j].getRangeType();
             std::stringstream ss;
             ss << argType;
-            Node bv = nm->mkBoundVar(ss.str(), argType);
+            Node bv = NodeManager::mkBoundVar(ss.str(), argType);
             cchildren.push_back(bv);
             // if fresh type, store it for later processing
             if (grammarTypes.insert(argType).second)
