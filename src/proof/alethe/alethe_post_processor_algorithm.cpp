@@ -14,6 +14,7 @@
  */
 
 #include "expr/nary_term_util.h"
+#include "expr/aci_norm.h"
 #include "proof/alethe/alethe_post_processor.h"
 
 using namespace cvc5::internal::kind;
