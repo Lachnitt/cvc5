@@ -3927,11 +3927,35 @@ if (y1.getType() == nm->integerType()){
     // removal (for example for the ITE case).
     case ProofRule::ITE_EQ:
     {
+      // vp1: (cl (= (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) true)) by rare_rewrite
+      // vp2: (cl (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) (not true)) by not_equiv2
+      // vp3: (cl true) by true
+      // res by resolution on vp2 vp3 
+      Node true_node = nm->mkConst(true);
+      Node vp1 = nm->mkNode(Kind::EQUAL,res,true_node);
+      Node vp2 = nm->mkNode(Kind::OR,res,true_node.notNode());
       return addAletheStep(AletheRule::RARE_REWRITE,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
                            {},
                            {nm->mkRawSymbol("\"ite-eq\"", nm->sExprType()),args[0][0],args[0][1],args[0][2]},
+                           *cdp)
+       && addAletheStepFromOr(AletheRule::EQUIV2,
+                           vp2,
+                           {vp1},
+                           {},
+                           *cdp)
+       && addAletheStep(AletheRule::TRUE,
+                           true_node,
+                           nm->mkNode(Kind::SEXPR, d_cl, true_node),
+                           {},
+                           {},
+                           *cdp)
+       && addAletheStep(AletheRule::RESOLUTION,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {vp2,true_node},
+                           {},
                            *cdp);
     }
     // ======== Skolemize
