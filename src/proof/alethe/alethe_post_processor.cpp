@@ -1778,152 +1778,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 
     // Step 3:
     // We want to use LA_GENERIC to connect the equality of the children with the one of the result.
-    // If d is the equality sign we have to do some more steps.
-    // For the other cases we know that sgn(cx) = sgn(cy)
-    /*
-       Case < 
-
-
-       (cl (not (= N(cX) N(cY))) (not (N(x2) < N(x1))) (not (N(y1) < N(y2)))) by LA_GENERIC 
-       (cl (not (N(x2) < N(x1))) (N(x1) < N(x2))) 
-	N(cx * (x1 - x2)) != N(cy * (y1 - y2))
-	(not (N(x1) < N(x2)))
-	(not (N(y1) < N(y2)))
-
-	arguments: -sgn(cy), sgn(cy) * cx, |cy|
-
-	Step 1 & 2:
-	N(cx * (x1 - x2)) = N(cy * (y1 - y2))
-	N(x2) > N(x1)
-	N(y2) > N(y1)
-
-	Step 3:
-	N'(cx * (x1 - x2)) - N'(cy * (y1 - y2)) = cy * (d_y1 - d_y2) - cx * (d_x1 - d_x2)
-	N'(x2) - N'(x1) > d_x1 - d_x2
-	N'(y2) - N'(y1) > d_y1 - d_y2
-
-	Step 5:
-	N'(-sgn(cy) * cx * (x1 - x2)) - N'(-sgn(cy) * cy * (y1 - y2)) = -sgn(cy) * cy * (d_y1 - d_y2) - -sgn(cy) * cx * (d_x1 - d_x2)
-	N'(|cx| * (x1 - x2)) = |cx| * (d_x2 - d_x1)
-	N'(|cy| * (y2 - y1)) = |cy| * (d_y1 - d_y2)
-
-	Sum up:
-	If sgn(cy) = sgn(cx) = 1, then 
-          
-	
-	If sgn(cy) = -1, then 
-	- N'(cy * (y1 - y2)) + N'(cy * (y2 - y1)) = cy * (d_y1 - d_y2) + cy * (d_y1 - d_y2)
-
-
-
-
-    */
-
-
-
-
-    // We use either
-    //   1. (= N(X) N(Y)), (not N(X)), (not N(Y)) by EQUIV_NEG1
-    // or
-    //   2. (= N(X) N(Y)), N(X), N(Y) by EQUIV_NEG2
-    // depending on the operator and the sign of cx and cy
-
-    // Case 1)
-    // Show first that
-    // vp1_X: (cl (not (= N(cX) N(cY))) (not N(X)) (not N(Y))) can be solved by LA_GENERIC
-    
-
-    // Case 2)
-    // Show first that (=> N(X) N(Y)) with a subproof
-    //
-    // assume vp1_X_a0: (cl (N(X))) 
-    // vp1_X: (cl (not (= N(cX) N(cY))) (not N(X)) N(Y)) can be solved by LA_GENERIC
-/*
-Case 1, op <:
-
-N(cx * (x1 - x2)) != N(cy * (y1 - y2))
-(not (N(x1) = N(x2)))
-(not (N(y1) < N(y2)))
-
-arguments: -1, cx, |cy|
-
-Step 1 & 2:
-N(cx * (x1 - x2)) = N(cy * (y1 - y2))
-N(x2) = N(x1)
-N(y2) > N(y1)
-
-Step 3:
-N'(cx * (x1 - x2) - cy * (y1 - y2)) = cy * (d_y1 - d_y2) - cx * (d_x1 - d_x2)
-N'(x2) - N'(x1) > d_x1 - d_x2
-N'(y2) - N'(y1) > d_y1 - d_y2
-
-Step 5:
-N'(cx * (x2 - x1) - cy * (y2 - y1)) = - cy * (d_y1 - d_y2) + cx * (d_x1 - d_x2)
-N'(|cx| * (x2 - x1)) = |cx| * (d_x1 - d_x2)
-N'(|cy| * (y2 - y1)) = |cy| * (d_y1 - d_y2)
-
-
-*/
-
-
-// vp2_X: (cl N(X) N(Y))
-    // vp4_X: (cl (not (N (X))) N(Y))
-    //
-    //  ----------------- LA_GENERIC        T2
-    //      vp1_X                      (= N(cX) N(cY))
-    //  ------------------------------------------------- RES
-    //           vp2_X                                       n_X_reverse
-    //  ----------------------------------------------------------------- RES
-    //                               vp4_X
-    //
-    //
-    // Now do something similar to get:
-    //
-    // vp1_Y: (cl (not (= N(cY) N(cX))) n_N(Y) N(X)) can be solved by LA_GENERIC with arguments 1, cx and cy
-    // vp2_Y: (cl (n_N(Y)) N(X) N(X))
-    // vp3_Y: (cl (n_N(Y)) N(X))
-    // vp4_Y: (cl (not (N(Y))) N(X))
-    //
-    //                                 (= N(cX) N(cY))
-    //  ----------------- LA_GENERIC  ---------------- SYMM
-    //      vp1_Y                      (= N(cY) N(cX))
-    //  ------------------------------------------------- RES
-    //           vp2_Y
-    //  ----------------------- CONTRACTION
-    //           vp3_Y                               (cl (not (N(Y))) (not n_N(Y)))
-    //  --------------------------------------------------------------------------------- RES
-    //                               vp4_Y
-
-    // 
-    //
-    // vp5: (cl (= N(X) N(Y)) N(X) N(Y)) 
-    //
-    // -------- EQUIV_NEG2
-    //   vp5     
-    //
-    // vp6_X: (cl (= N(X) N(Y)) N(Y) N(Y)) 
-    // vp7_X: (cl (= N(X) N(Y)) N(Y)) 
-    //
-    //   vp5                     vp4_X
-    // ---------------------------------- RESOLUTION
-    //                vp6_X
-    // ---------------------------------- CONTRACTION
-    //                vp7_X
-    //
-    // A similar tree gets us:
-    // vp7_Y: (cl (= N(X) N(Y)) N(X))
-    // 
-    // Then,
-    // vp8: (cl (= N(X) N(Y)) (not (N(X))) (not (N(Y))))
-    // vp9: (cl (= N(X) N(Y)) (= N(X) N(Y)) (= N(X) N(Y)))
-    // vp10: (cl (= N(X) N(Y)))
-    //
-    // --------- EQUIV_NEG1
-    //    vp8                     vp7_X        vp7_Y
-    // ------------------------------------------------ RESOLUTION
-    //                     vp9
-    // ------------------------------------------------- CONTRACTION
-    //                     vp10
+    // For now we add a rewrite rule for all cases, except when d is the equality sign 
 
     // Step 4:
     //                       Y_n_Y  
@@ -2121,23 +1976,10 @@ N'(|cy| * (y2 - y1)) = |cy| * (d_y1 - d_y2)
       //Node n_X_n_Y = nm->mkNode(Kind::EQUAL, n_X, n_Y);
       //Node n_res = nm->mkNode(Kind::EQUAL, n_X, n_Y);
      
-      // n_x_reverse_1: (cl (= (not(N(X))) n_N(X)))
-      // n_x_reverse_2: (cl (not (= (not(N(X))) n_N(X))) (not(N(X))) (not n_N(X)))
-      // n_x_reverse: (cl (not(N(X))) (not n_N(X)))
-      //
-      // ------------------ RARE_REWRITE  -------------------- EQUIV_POS1
-      //   n_x_reverse_1                      n_x_reverse_2
-      // -----------------------------------------------------  RESOLUTION
-      //                     n_x_reverse
       
 Node n_cY_n_cX = nm->mkNode(Kind::EQUAL,n_cY,n_cX);
-success &= addAletheStep(
-		AletheRule::SYMM,
-		n_cY_n_cX,
-	        nm->mkNode(Kind::SEXPR,d_cl,n_cY_n_cX),
-		{n_cX_n_cY},
-		{},
-		*cdp);
+Node n_X_n_Y = nm->mkNode(Kind::EQUAL,n_X,n_Y); 
+Node X_Y = nm->mkNode(Kind::EQUAL,X,Y); 
 Node vp4_X;
 Node vp4_Y;
 Node vp10;
@@ -2397,86 +2239,6 @@ Trace("alethe-proof") << "HERE" << std::endl;
 
         Trace("alethe-proof") << "Finished proof that (cl (not (N (Y))) N(X))" << std::endl;
 
-/*}
-else{
-	  Kind reverse;
-      switch (diamond) {
-	 case Kind::LT:
-	   reverse = Kind::GEQ;
-	   break;
-	 case Kind::LEQ:
-	   reverse = Kind::GT;
-	   break;
-	 case Kind::EQUAL:
-	   reverse = Kind::EQUAL; //TODO
-	   break;
-	 case Kind::GEQ:
-	   reverse = Kind::LT;
-	   break;
-	 case Kind::GT:
-	   reverse = Kind::LEQ;
-	   break;
-         default:
-	   Assert(Unreachable());
-      }
-
-
-
-
-      Node i_n_X = nm->mkNode(reverse,n_X[0],n_X[1]);
-      Node n_X_reverse_1 = nm->mkNode(Kind::EQUAL, n_X.notNode(),i_n_X); 
-      Node n_X_reverse_2 = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_X.notNode(),i_n_X).notNode(), n_X.notNode(),i_n_X.notNode()); 
-      Node n_X_reverse = nm->mkNode(Kind::OR,n_X.notNode(),i_n_X.notNode());
-
-      success &= addAletheStep(
-		AletheRule::RARE_REWRITE,
-		n_X_reverse_1,
-      		nm->mkNode(Kind::SEXPR, d_cl, n_X_reverse_1),
-		{},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::EQUIV_POS1,
-		n_X_reverse_2,
-		{},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		n_X_reverse,
-		{n_X_reverse_1,n_X_reverse_2},
-		{},
-		*cdp);
-     Trace("alethe-proof")  << "Finished proof for n_X_reverse" << std::endl;
-
-      // Same for Y
-      Node i_n_Y = nm->mkNode(reverse,n_Y[0],n_Y[1]);
-      Node n_Y_reverse_1 = nm->mkNode(Kind::EQUAL, n_Y.notNode(),i_n_Y); 
-      Node n_Y_reverse_2 = nm->mkNode(Kind::OR, nm->mkNode(Kind::EQUAL,n_Y.notNode(),i_n_Y).notNode(), n_Y.notNode(),i_n_Y.notNode()); 
-      Node n_Y_reverse = nm->mkNode(Kind::OR,n_Y.notNode(),i_n_Y.notNode());
-
-      success &= addAletheStep(
-		AletheRule::RARE_REWRITE,
-		n_Y_reverse_1,
-      		nm->mkNode(Kind::SEXPR, d_cl, n_Y_reverse_1),
-		{},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::EQUIV_POS1,
-		n_Y_reverse_2,
-		{},
-		{},
-		*cdp)
-       && addAletheStepFromOr(
-		AletheRule::RESOLUTION,
-		n_Y_reverse,
-		{n_Y_reverse_1,n_Y_reverse_2},
-		{},
-		*cdp);
-
-     Trace("alethe-proof")  << "Finished proof for n_Y_reverse" << std::endl;
-
     // vp1_X: (cl (not (= N(cX) N(cY))) n_N(X) N(Y)) can be solved by LA_GENERIC with arguments 1, cx and cy
     // vp3_X: (cl (n_N (X)) N(Y) N(Y))
     // vp4_X: (cl (n_N (X)) N(Y))
@@ -2491,7 +2253,7 @@ else{
     //  --------------------------------------------------------------------------------- RES
     //                               vp5_X
        
-        Node vp1_X = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_cX,n_cY).notNode(),i_n_X,n_Y);
+   /*     Node vp1_X = nm->mkNode(Kind::OR,nm->mkNode(Kind::EQUAL,n_cX,n_cY).notNode(),n_X,n_Y);
         Node vp2_X = nm->mkNode(Kind::OR,i_n_X,n_Y,n_Y);
         Node vp3_X = nm->mkNode(Kind::OR,i_n_X,n_Y);
         vp4_X = nm->mkNode(Kind::OR,n_X.notNode(),n_Y);
@@ -2571,11 +2333,10 @@ else{
 		*cdp);
 
         Trace("alethe-proof") << "Finished proof that (cl (not (N (Y))) N(X))" << std::endl;
-
+*/
     // vp1_X: (cl (not (= N(cX) N(cY))) N(X) N(Y)) can be
     // vp4_X: (cl (not (N (X))) N(Y))
 
-}*/
     // vp5: (cl (= N(X) N(Y)) N(X) N(Y)) 
     //
     // -------- EQUIV_NEG2
@@ -2669,21 +2430,30 @@ else{
 		*cdp);
      Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)))" << std::endl;
 }
-else
-{
-      std::vector<Node> default_args2 = {nm->mkRawSymbol("\"arith-poly-norm-rel\"", nm->sExprType())};
+else{
+    std::vector<Node> default_args2 = {nm->mkRawSymbol("\"arith-poly-norm-rel\"", nm->sExprType())};
+    Node vp9 = nm->mkNode(Kind::EQUAL,n_cY_n_cX,n_X_n_Y);
     vp10 = nm->mkNode(Kind::EQUAL,n_X,n_Y);
     success &= addAletheStep(
 		AletheRule::RARE_REWRITE,
+		vp9,
+		nm->mkNode(Kind::SEXPR,d_cl,vp9),
+		{},
+		default_args2,
+		*cdp)
+    && addAletheStep(
+		AletheRule::TRANS,
 		vp10,
 		nm->mkNode(Kind::SEXPR,d_cl,vp10),
-		{n_cY_n_cX},
-		default_args2,
+		{vp9, n_cY_n_cX},
+		{},
 		*cdp);
     
 
 
 
+
+     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)))" << std::endl;
 }
     // Step 4:
     //                       Y_n_Y  
@@ -2693,7 +2463,6 @@ else
     //            n_X_n_Y
     // 
 
-     Node n_X_n_Y = nm->mkNode(Kind::EQUAL,n_X,n_Y); 
      success &= addAletheStep(
 		AletheRule::SYMM,
 		n_Y_Y,
@@ -2703,13 +2472,13 @@ else
 		*cdp)
         &&  addAletheStep(
 		AletheRule::RESOLUTION,
-		n_X_n_Y,
-		nm->mkNode(Kind::SEXPR, d_cl, n_X_n_Y),
+		X_Y,
+		nm->mkNode(Kind::SEXPR, d_cl, X_Y),
 		{X_n_X,vp10,n_Y_Y},
 		{},
 		*cdp);
 
-     Trace("alethe-proof") << "Finished proof that (cl (= N(X) N(Y)))" << std::endl;
+     Trace("alethe-proof") << "Finished proof that (cl (= X Y))" << std::endl;
     // De-normalization:
     //
     //  X_n_X     n_X_n_Y    n_Y_Y
