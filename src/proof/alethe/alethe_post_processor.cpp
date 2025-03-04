@@ -1894,7 +1894,7 @@ bool AletheProofPostprocessCallback::update(Node res,
        
 
       }
-      if (diamond != Kind::EQUAL){
+      //if (diamond != Kind::EQUAL){
 
         std::string diamond_str = kindToString(diamond);
         std::transform(diamond_str.begin(), diamond_str.end(), diamond_str.begin(),tolower);
@@ -1947,7 +1947,7 @@ bool AletheProofPostprocessCallback::update(Node res,
     
  
 
-      }
+      //}
       // Normalize x1, x2, y1, y2
       Node n_tr_x1 = mkPolyNorm(tr_x1,cdp).theory::arith::PolyNorm::toNode(real_type);
       Trace("alethe-proof") << " normalized tr_x1 = " << tr_x1 << " to " << n_tr_x1 << std::endl; 
