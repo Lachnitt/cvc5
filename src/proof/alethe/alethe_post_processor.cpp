@@ -1880,25 +1880,21 @@ bool AletheProofPostprocessCallback::update(Node res,
 
 
       //TODO:
-      bool implicit_to_real = (x1.getType() == nm->integerType() && children[0][0][0].getType()
+      bool x_implicit_to_real = (x1.getType() == nm->integerType() && cx.getType()
       == nm->realType());
-      std::string add_to_real = implicit_to_real ? "to_real" : "";
+      bool y_implicit_to_real = (y1.getType() == nm->integerType() && cy.getType()
+      == nm->realType());
+      std::string add_to_real =
+         x_implicit_to_real && y_implicit_to_real ? "-both-to-real" :
+         x_implicit_to_real ? "-left-to-real":
+         y_implicit_to_real ? "-right-to-real":
+         "";
 
-      if (implicit_to_real){
-        return addAletheStep(AletheRule::HOLE,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-       
-
-      }
       //if (diamond != Kind::EQUAL){
 
         std::string diamond_str = kindToString(diamond);
         std::transform(diamond_str.begin(), diamond_str.end(), diamond_str.begin(),tolower);
-        std::vector<Node> default_args2 = {nm->mkRawSymbol("\"arith-poly-norm-rel-" + diamond_str + "\"", nm->sExprType()),cx,cy,x1,x2,y1,y2};
+        std::vector<Node> default_args2 = {nm->mkRawSymbol("\"arith-poly-norm-rel-" + diamond_str + add_to_real + "\"", nm->sExprType()),cx,cy,x1,x2,y1,y2};
         Node vp1 = nm->mkNode(Kind::EQUAL,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true));
         Node vp2 = nm->mkNode(Kind::OR,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true).notNode());
         Node vp3 = nm->mkConst(true);
