@@ -684,7 +684,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
             Trace("alethe-poly-norm-1") << "... cumulative_normalized " << cumulative_normalized << " \n";
 	    Node timinus1 = cur[0];
 	    std::vector<Node> ris;
-            for (int i = 0; i < cur.getNumChildren(); i++)
+            for (size_t i = 0; i < cur.getNumChildren(); i++)
             {
               ris.push_back(cur[i]);
               if (i != 0)
@@ -1593,7 +1593,6 @@ bool AletheProofPostprocessCallback::update(Node res,
     // , where rule is RARE_REWRITE with argument arith_to_int_to_real
     case ProofRule::ARITH_POLY_NORM:
     {
-      std::vector<Node> default_args = {nm->mkRawSymbol("\"arith-poly-norm\"", nm->sExprType())};
       Assert(res.getNumChildren() >= 2);
       if (res[0] == res[1]) {
         return addAletheStep(
@@ -1611,7 +1610,7 @@ bool AletheProofPostprocessCallback::update(Node res,
             res,
             nm->mkNode(Kind::SEXPR, d_cl, res),
             children,
-	    default_args,
+	    {},
             *cdp);
       }
       else {
@@ -1735,76 +1734,100 @@ bool AletheProofPostprocessCallback::update(Node res,
       }
     }
 
-    // cx * (x1 - x2) = cy * (y1 - y2)
-    //---------------------------------
-    //      (x1 d x2) = (y1 d y2)
-
+    //
+    // --------- rare_rewrite
+    //    VP1
+    // --------- equiv2       ---------- true
+    //    VP2                     VP3
+    // --------------------------------- resolution
+    //             VP4 
+    // --------------------------------- implies
+    //             VP5                                   P
+    // ----------------------------------------------------- resolution
+    //                              res
+    //
+    // VP1: (cl (= (=> P res) res))
+    // VP2: (cl (=> P res) (not true))
+    // VP3: (cl true)
+    // VP4: (cl (=> P res))
+    // VP5: (cl (not P) res)
+    //
+    // (define-rule-cond arith-poly-norm-rel-op ((cx ?) (cy ?) (x1 ?) (x2 ?) (y1 ?) (y2 ?))
+    //   (and (not (= cx 0)) (not (= cy 0)) (= (> cx 0) (> cy 0)))
+    //   (=> (= (* cx (- x1 x2)) (* cy (- y1 y2))) (= (x1 diamond x2) (y1 diamond y2)))
+    //   True)
+    //
+    // ,where op in {leq,lt,geq,gt,eq} depending on diamond
+    //
+    // (define-rule-cond arith-poly-norm-rel-op-left-to-real ((cx Real) (cy Real) (x1 Int) (x2 Int) (y1 Real) (y2 Real))
+    //   (and (not (= cx 0)) (not (= cy 0)) (= (> cx 0) (> cy 0)))
+    //   (=> (= (* cx (to_real (- x1 x2))) (* cy (- y1 y2))) (= (x1 diamond x2) (y1 diamond y2)))
+    //   True)
+    //
+    // ,where op in {leq,lt,geq,gt,eq} depending on diamond
+    //
+    // (define-rule-cond arith-poly-norm-rel-op-right-to-real ((cx Real) (cy Real) (x1 Real) (x2 Real) (y1 Int) (y2 Int))
+    //   (and (not (= cx 0)) (not (= cy 0)) (= (> cx 0) (> cy 0)))
+    //   (=> (= (* cx (- x1 x2)) (* cy (to_real (- y1 y2)))) (= (x1 diamond x2) (y1 diamond y2)))
+    //   True)
+    //
+    // ,where op in {leq,lt,geq,gt,eq} depending on diamond
+    //
+    // (define-rule-cond arith-poly-norm-rel-op-both-to-real ((cx Real) (cy Real) (x1 Int) (x2 Int) (y1 Int) (y2 Int))
+    //   (and (not (= cx 0)) (not (= cy 0)) (= (> cx 0) (> cy 0)))
+    //   (=> (= (* cx (to_real (- x1 x2))) (* cy (to_real (- y1 y2)))) (= (x1 diamond x2) (y1 diamond y2)))
+    //   True)
+    //
+    // ,where op in {leq,lt,geq,gt,eq} depending on diamond
     case ProofRule::ARITH_POLY_NORM_REL:
     {
       bool success = true;
-      std::vector<Node> default_args = {nm->mkRawSymbol("\"arith-poly-norm-rel\"", nm->sExprType())};
       TypeNode real_type = nm->realType();
       TypeNode int_type = nm->integerType();
       Kind diamond = res[0].getKind();
+      std::string diamond_str = kindToString(diamond);
+      std::transform(diamond_str.begin(), diamond_str.end(), diamond_str.begin(),tolower);
 
+      // cx * (x1 - x2) = cy * (y1 - y2)
+      //---------------------------------
+      //      (x1 d x2) = (y1 d y2)
       Node X = res[0];
       Node x1 = X[0];
-      Node tr_x1 = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x1) : x1;
       Node x2 = X[1];
-      Node tr_x2 = (x2.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x2) : x2;
-      Node tr_X = nm->mkNode(diamond,tr_x1,tr_x2);
+      Assert(x1.getType() == x2.getType());
 
       Node Y = res[1];
       Node y1 = Y[0];
-      Node tr_y1 = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y1) : y1;
       Node y2 = Y[1];
-      Node tr_y2 = (y2.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y2) : y2;
-      Node tr_Y = nm->mkNode(diamond,tr_y1,tr_y2);
+      Assert(y1.getType() == y2.getType());
  
-      // Let cX be cx * (x1 - x2), if x1 is real or (to_real (cx * (x1 - x2)))
-      // Let cY be cy * (y1 - y2), if y1 is real or (to_real (cy * (y1 - y2)))
       Node c = children[0];
-
-      Node cx = c[0][0];
-      Node x1x2 = c[0][1];
-      Node tr_x1x2 = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,x1x2) : x1x2;
-      //Node cX = nm->mkNode(Kind::MULT,cx,tr_x1x2);
-      Node cX = (x1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,c[0]) : c[0];
-
+      Node cx = c[0][0]; 
+      Node x1x2 = c[0][1]; // Could be (x1 - x2) or (to_real (x1 - x2))
       Node cy = c[1][0];
-      Node y1y2 = c[1][1];
-      Node tr_y1y2 = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,y1y2) : y1y2;
-      //Node cY = nm->mkNode(Kind::MULT,cy,tr_y1y2);
-      Node cY = (y1.getType() == int_type) ? nm->mkNode(Kind::TO_REAL,c[1]) : c[1];
+      Node y1y2 = c[1][1]; // Could be (y1 - y2) or (to_real (y1 - y2))
 
-
-      //TODO:
-      bool x_implicit_to_real = (x1.getType() == nm->integerType() && cx.getType()
-      == nm->realType());
-      bool y_implicit_to_real = (y1.getType() == nm->integerType() && cy.getType()
-      == nm->realType());
+      bool x_implicit_to_real = (x1.getType() == int_type) && (cx.getType() == real_type);
+      bool y_implicit_to_real = (y1.getType() == int_type) && (cy.getType() == real_type);
       std::string add_to_real =
          x_implicit_to_real && y_implicit_to_real ? "-both-to-real" :
          x_implicit_to_real ? "-left-to-real":
          y_implicit_to_real ? "-right-to-real":
          "";
 
-      //if (diamond != Kind::EQUAL){
 
-        std::string diamond_str = kindToString(diamond);
-        std::transform(diamond_str.begin(), diamond_str.end(), diamond_str.begin(),tolower);
-        std::vector<Node> default_args2 = {nm->mkRawSymbol("\"arith-poly-norm-rel-" + diamond_str + add_to_real + "\"", nm->sExprType()),cx,cy,x1,x2,y1,y2};
-        Node vp1 = nm->mkNode(Kind::EQUAL,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true));
-        Node vp2 = nm->mkNode(Kind::OR,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true).notNode());
-        Node vp3 = nm->mkConst(true);
-        Node vp4 = nm->mkNode(Kind::IMPLIES,children[0],res);
-        Node vp5 = nm->mkNode(Kind::OR,children[0].notNode(),res);
-        return success &= addAletheStep(
+      new_args = {nm->mkRawSymbol("\"arith-poly-norm-rel-" + diamond_str + add_to_real + "\"", nm->sExprType()),cx,cy,x1,x2,y1,y2};
+      Node vp1 = nm->mkNode(Kind::EQUAL,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true));
+      Node vp2 = nm->mkNode(Kind::OR,nm->mkNode(Kind::IMPLIES,children[0],res),nm->mkConst(true).notNode());
+      Node vp3 = nm->mkConst(true);
+      Node vp4 = nm->mkNode(Kind::IMPLIES,children[0],res);
+      Node vp5 = nm->mkNode(Kind::OR,children[0].notNode(),res);
+      return success &= addAletheStep(
                     AletheRule::RARE_REWRITE,
                     vp1,
                     nm->mkNode(Kind::SEXPR,d_cl,vp1),
                     {},
-                    default_args2,
+                    new_args,
                     *cdp)
          && addAletheStepFromOr(
                     AletheRule::EQUIV2,
@@ -1839,8 +1862,6 @@ bool AletheProofPostprocessCallback::update(Node res,
                     {children[0],vp5},
                     {},
                     *cdp);
-    
- 
 
     }
     // EVALUATE, which is used by the RARE elaboration, is captured by the "rare_rewrite" rule.
