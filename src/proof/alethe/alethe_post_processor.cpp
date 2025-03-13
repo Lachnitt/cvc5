@@ -317,7 +317,6 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
      (define-rule arith-distrib-uminus-rev ((t Int)) (to_real (-x)) (- (to_real x)))
   */
   std::vector<Node> tr_distrib_uminus_rev_args = {nm->mkRawSymbol("\"arith-to-real-distrib-uminus-rev\"", nm->sExprType())};
-  std::vector<Node> uminus_rev_args = {nm->mkRawSymbol("\"arith-distrib-uminus-rev\"", nm->sExprType())};
   /*
      (define-rule arith-to-real-distrib-add ((x Int) (y Int)) (to_real (+ x y)) (+ (to_real x) (to_real y)))
      (define-rule arith-to-real-distrib-minus ((x Int) (y Int)) (to_real (- x y)) (- (to_real x) (to_real y)))
@@ -3776,6 +3775,60 @@ bool AletheProofPostprocessCallback::update(Node res,
       }
       return success;
     }
+    // for _total, div_total, mod_total, t is (diamond a b) and the rule has
+    //   the form (and (= t k) (reducted a b)), where k=purified(t)
+    /*case ProofRule::ARITH_REDUCTION:
+    {
+      
+      Node t = args[0];
+      Kind diamond = t.getKind();
+      if (diamond == Kind::IS_INT || diamond == Kind::TO_INT){
+        
+      }
+      else if (diamond == Kind::DIVISION_TOTAL || diamond == Kind::INTS_DIVISION_TOTAL || diamond == Kind::INTS_MODULUS_TOTAL){
+        Node a = t[0];
+        Node b = t[1];
+
+        Node k = res[0][1];
+        std::string diamond_str = kindToString(diamond);
+        std::transform(diamond_str.begin(), diamond_str.end(), diamond_str.begin(),tolower);
+        new_args = {nm->mkRawSymbol("\"arith-reduction-" + diamond_str + "\"", nm->sExprType()),t,k};
+
+        Node vp1 = nm->mkNode(Kind::EQUAL,res,nm->mkConst(true));
+        Node vp2 = nm->mkNode(Kind::OR,res,nm->mkConst(true).notNode());
+        Node vp3 = nm->mkConst(true);
+        return addAletheStep(
+                    AletheRule::RARE_REWRITE,
+                    vp1,
+                    nm->mkNode(Kind::SEXPR,d_cl,vp1),
+                    {},
+                    new_args,
+                    *cdp)
+         && addAletheStepFromOr(
+                    AletheRule::EQUIV2,
+                    vp2,
+                    {vp1},
+                    {},
+                    *cdp)
+         && addAletheStep(
+                    AletheRule::TRUE,
+                    vp3,
+                    nm->mkNode(Kind::SEXPR,d_cl,vp3),
+                    {},
+                    {},
+                    *cdp)
+         && addAletheStep(
+                    AletheRule::RESOLUTION,
+                    res,
+                    nm->mkNode(Kind::SEXPR,d_cl,res),
+                    {vp2,vp3},
+                    {},
+                    *cdp);
+
+
+     }
+ 
+    }*/
     default:
     {
       Trace("alethe-proof")
