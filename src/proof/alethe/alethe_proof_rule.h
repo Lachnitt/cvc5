@@ -423,6 +423,9 @@ enum class AletheRule : uint32_t
   // ...
   // > j. (not (= G F))
   NOT_SYMM,
+  // ======== eq_symmteric
+  // > i. (= (= F G) (= G F))
+  EQ_SYMMETRIC,
   // ======== reorder
   // > i1. F1
   // ...

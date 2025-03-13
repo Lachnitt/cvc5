@@ -125,6 +125,7 @@ const char* aletheRuleToString(AletheRule id)
     case AletheRule::RARE_REWRITE: return "rare_rewrite";
     case AletheRule::SYMM: return "symm";
     case AletheRule::NOT_SYMM: return "not_symm";
+    case AletheRule::EQ_SYMMETRIC: return "eq_symmetric";
     case AletheRule::REORDERING: return "reordering";
     case AletheRule::SHUFFLE: return "shuffle";
     case AletheRule::BV_BITBLAST_STEP_VAR: return "bv_bitblast_step_var";

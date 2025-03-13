@@ -1503,7 +1503,16 @@ bool AletheProofPostprocessCallback::update(Node res,
       {
         std::stringstream ss;
         ss << "\"" << di << "\"";
-        rule = NodeManager::mkRawSymbol(ss.str(), nm->sExprType());
+        std::string ss_str = ss.str();
+        if (ss_str.compare("eq-symm")){
+          return addAletheStep(AletheRule::EQ_SYMMETRIC,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+        }
+        rule = NodeManager::mkRawSymbol(ss_str, nm->sExprType());
       }
       else
       {
