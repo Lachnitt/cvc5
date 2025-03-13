@@ -554,7 +554,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
             if (is_int) {
               Node vp1a = nm->mkNode(Kind::EQUAL, new_cur, nm->mkNode(k,new_cur_0));
               Node vp1b = nm->mkNode(Kind::EQUAL, nm->mkNode(k,new_cur_0), nm->mkNode(k,to_be_added[0]));
-              tr_distrib_uminus_rev_args.push_back(new_cur_0);
+              tr_distrib_uminus_rev_args.push_back(new_cur_0[0]);
 	      success &= addAletheStep(AletheRule::RARE_REWRITE,
                            vp1a,
                            nm->mkNode(Kind::SEXPR, d_cl, vp1a),
