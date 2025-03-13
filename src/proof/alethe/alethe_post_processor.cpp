@@ -328,13 +328,13 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
   std::vector<Node> tr_distrib_neg_args = {nm->mkRawSymbol("\"arith-to-real-distrib-uminus\"", nm->sExprType())};
   std::vector<Node> tr_distrib_mult_args = {nm->mkRawSymbol("\"arith-to-real-distrib-mult\"", nm->sExprType())};
   /*
-     (define-rule arith-distrib-add ((x ?) (xs ? :list) (y ?)) (+ (+ xs x) y) (+ xs (x + y)))
+     (define-rule arith-distrib-add ((x ?) (xs ? :list) (y ?)) (+ (+ xs x) y) (+ xs (+ x y)))
      (define-rule arith-distrib-add ((x ?) (xs ? :list)) (+ (+ xs) x) (+ xs x))
   */
-  std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib_add\"", nm->sExprType())};
-  std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib_minus\"", nm->sExprType())};
-  std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib_uminus\"", nm->sExprType())};
-  std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib_mult\"", nm->sExprType())};
+  std::vector<Node> distrib_add_args = {nm->mkRawSymbol("\"arith-distrib-add\"", nm->sExprType())};
+  std::vector<Node> distrib_sub_args = {nm->mkRawSymbol("\"arith-distrib-minus\"", nm->sExprType())};
+  std::vector<Node> distrib_neg_args = {nm->mkRawSymbol("\"arith-distrib-uminus\"", nm->sExprType())};
+  std::vector<Node> distrib_mult_args = {nm->mkRawSymbol("\"arith-distrib-mult\"", nm->sExprType())};
   
 
 
@@ -749,7 +749,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 		  arith_distrib_k_args.push_back(timinus1);
                   std::vector<Node> list_arg{
                   NodeManager::mkBoundVar("rare-list", nm->sExprType())};
-            	  list_arg.insert(list_arg.end(), ri.begin(), ri.end());
+            	  list_arg.insert(list_arg.end(), ris.begin(), ris.end());
                   arith_distrib_k_args.push_back(nm->mkNode(Kind::SEXPR, list_arg));
 	          if (is_int)
                   {
