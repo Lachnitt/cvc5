@@ -128,6 +128,9 @@ const char* aletheRuleToString(AletheRule id)
     case AletheRule::EQ_SYMMETRIC: return "eq_symmetric";
     case AletheRule::REORDERING: return "reordering";
     case AletheRule::SHUFFLE: return "shuffle";
+    case AletheRule::QNT_MINISCOPE_AND: return "qnt_miniscope_and";
+    case AletheRule::QNT_MINISCOPE_OR: return "qnt_miniscope_or";
+    case AletheRule::QNT_MINISCOPE_ITE: return "qnt_miniscope_ite";
     case AletheRule::BV_BITBLAST_STEP_VAR: return "bv_bitblast_step_var";
     case AletheRule::BV_BITBLAST_STEP_BVAND: return "bv_bitblast_step_bvand";
     case AletheRule::BV_BITBLAST_STEP_BVOR: return "bv_bitblast_step_bvor";

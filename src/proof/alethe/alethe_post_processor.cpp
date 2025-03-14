@@ -1022,6 +1022,33 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            new_args,
                            *cdp);
     }
+    case ProofRewriteRule::QUANT_MINISCOPE_AND:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_AND,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
+    case ProofRewriteRule::QUANT_MINISCOPE_OR:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_OR,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
+    case ProofRewriteRule::QUANT_MINISCOPE_ITE:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_ITE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
     case ProofRewriteRule::EXISTS_ELIM:
     {
     // (exists (x1 ... xn) F) = (not (forall (x1 ... xn) (not F)))
