@@ -1214,6 +1214,17 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            *cdp);
    
     }
+    case ProofRewriteRule::QUANT_UNUSED_VARS:
+    {
+      return addAletheStep(AletheRule::QNT_RM_UNUSED,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+   
+    }
+
  
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
@@ -1245,7 +1256,11 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
      }
 
     }
-    default: std::cout << "di" << di << std::endl;break;
+    default: 
+      std::stringstream ss;
+      ss << "\"" << di << "\"";
+      new_args.push_back(NodeManager::mkRawSymbol(ss.str(), nm->sExprType()));
+      break;
   }
   return addAletheStep(AletheRule::HOLE,
                        res,
