@@ -434,9 +434,11 @@ enum class AletheRule : uint32_t
   // literals in C2 is the same of that of C1.
   REORDERING,
   SHUFFLE,
+  //These will eventually be replaced by Alethe rules
   QNT_MINISCOPE_AND,
   QNT_MINISCOPE_OR,
   QNT_MINISCOPE_ITE,
+  QNT_VAR_REORDERING,
   // ======== bitvector
   //  > i. (cl (= t bbt(t)))
   BV_BITBLAST_STEP_VAR,

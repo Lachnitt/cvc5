@@ -1517,6 +1517,10 @@ bool AletheProofPostprocessCallback::update(Node res,
 
       return success;
     }
+    case ProofRule::ENCODE_EQ_INTRO:
+    {
+      return addAletheStep(AletheRule::REFL,res,nm->mkNode(Kind::SEXPR,d_cl,res),{},{},*cdp);
+    }
     // The conversion is into a "rare_rewrite" step where the first argument is
     // a string literal with the name of the rewrite, followed by the arguments,
     // where lists are built using the Alethe operator "rare-list", which takes
@@ -3267,6 +3271,16 @@ bool AletheProofPostprocessCallback::update(Node res,
                            {vp},
                            new_args,
                            *cdp);
+    }
+    case ProofRule::QUANT_VAR_REORDERING:
+    {
+      return addAletheStep(AletheRule::QNT_VAR_REORDERING,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    
     }
     //================================================= Arithmetic rules
     // ======== Adding Scaled Inequalities
