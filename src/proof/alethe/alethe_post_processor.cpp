@@ -1022,33 +1022,6 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            new_args,
                            *cdp);
     }
-    case ProofRewriteRule::QUANT_MINISCOPE_AND:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_AND,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-    }
-    case ProofRewriteRule::QUANT_MINISCOPE_OR:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_OR,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-    }
-    case ProofRewriteRule::QUANT_MINISCOPE_ITE:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_ITE,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-    }
     case ProofRewriteRule::EXISTS_ELIM:
     {
     // (exists (x1 ... xn) F) = (not (forall (x1 ... xn) (not F)))
@@ -1204,7 +1177,75 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
 
 
     }
-    default: break;
+    case ProofRewriteRule::QUANT_MINISCOPE_AND:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_AND,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
+    case ProofRewriteRule::QUANT_MINISCOPE_OR:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_OR,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
+    case ProofRewriteRule::QUANT_MINISCOPE_ITE:
+    {
+      return addAletheStep(AletheRule::QNT_MINISCOPE_ITE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+    }
+    case ProofRewriteRule::QUANT_MERGE_PRENEX:
+    {
+      return addAletheStep(AletheRule::QNT_JOIN,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
+   
+    }
+ 
+    case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
+    {
+      if (res[0].getKind()==Kind::OR){
+         Node F = res[0][1][1];
+         Node x_t = res[0][1][0];
+         Node vp1 = nm->mkNode(Kind::EQUAL,res[0][1],res[0]);
+         new_args.push_back(res[0][0][0]);
+         return addAletheStep(AletheRule::REFL,
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                           {},
+                           {},
+                           *cdp)
+          && addAletheStep(AletheRule::ANCHOR_ONEPOINT,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {vp1},
+                           {},
+                           *cdp);
+      }
+      else{
+        return addAletheStep(AletheRule::RARE_REWRITE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+	                   {nm->mkRawSymbol("\"quant_var_elim_eq\"", nm->sExprType()),res[0][1][0],res[0][1][1]},
+                           *cdp);
+     }
+
+    }
+    default: std::cout << "di" << di << std::endl;break;
   }
   return addAletheStep(AletheRule::HOLE,
                        res,
