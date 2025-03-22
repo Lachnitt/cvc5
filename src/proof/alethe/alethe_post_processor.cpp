@@ -1228,7 +1228,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
  
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
-      if (res[0].getKind()==Kind::OR){
+      if (res[0][1].getKind()==Kind::OR){
          Node F = res[0][1][1];
          Node x_t = res[0][1][0];
          Node vp1 = nm->mkNode(Kind::EQUAL,res[0][1],res[0]);
