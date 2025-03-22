@@ -1229,10 +1229,23 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
       if (res[0][1].getKind()==Kind::OR){
-         Node F = res[0][1][1];
-         Node x_t = res[0][1][0];
-         Node vp1 = nm->mkNode(Kind::EQUAL,res[0][1],res[0]);
-         new_args.push_back(res[0][0][0]);
+         //((forall x. x != t \/ F)) =  F{x ->t}
+         Node LHS_body = res[0][1];
+         Node F;
+         if (LHS_body.getNumChildren() == 2){
+           F = LHS_body[1];
+         }
+         else{
+           std::vector<Node> F_clauses = {};
+           F_clauses.insert(F_clauses.end(),LHS_body.begin()+1,LHS_body.end());
+           F = nm->mkNode(Kind::OR,F_clauses);
+         }
+         Node x_t = LHS_body[0][0];
+         Node x = x_t[0];
+         Node t = x_t[1];
+         Node vp1 = nm->mkNode(Kind::EQUAL,F,res[1]);
+         new_args.push_back(x);
+         new_args.push_back(nm->mkNode(Kind::EQUAL,x,t));
          return addAletheStep(AletheRule::REFL,
                            vp1,
                            nm->mkNode(Kind::SEXPR, d_cl, vp1),
@@ -1243,7 +1256,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
                            {vp1},
-                           {},
+                           new_args,
                            *cdp);
       }
       else{
