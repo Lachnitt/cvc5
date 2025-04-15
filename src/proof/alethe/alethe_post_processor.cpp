@@ -1225,7 +1225,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
    
     }
 
- 
+    // TODO: Duplicates 
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
       if (res[0][1].getKind()==Kind::OR){
