@@ -88,7 +88,7 @@ Node applyNarySimplify(Node res){
   std::vector<Node> without_negation;
   Node inverse = (k==Kind::AND ? nm->mkConst(false) : nm->mkConst(true));
   TypeNode atn = res.getType();
-  Node nt = expr::getNullTerminator(k, atn);
+  Node nt = expr::getNullTerminator(nm, k, atn);
   for (Node current : res){
     if (current == nt){
       continue;
