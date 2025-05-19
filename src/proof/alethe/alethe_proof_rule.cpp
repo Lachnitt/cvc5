@@ -110,6 +110,7 @@ const char* aletheRuleToString(AletheRule id)
     case AletheRule::EQUIV_SIMPLIFY: return "equiv_simplify";
     case AletheRule::BOOL_SIMPLIFY: return "bool_simplify";
     case AletheRule::AC_SIMP: return "ac_simp";
+    case AletheRule::BV_ACI_SIMP: return "bv_aci_simp";
     case AletheRule::QUANTIFIER_SIMPLIFY: return "qnt_simplify";
     case AletheRule::DIV_SIMPLIFY: return "div_simplify";
     case AletheRule::PROD_SIMPLIFY: return "prod_simplify";
@@ -155,6 +156,7 @@ const char* aletheRuleToString(AletheRule id)
     case AletheRule::BV_BITBLAST_STEP_SIGN_EXTEND:
       return "bv_bitblast_step_sign_extend";
     case AletheRule::ARITH_POLY_NORM: return "arith_poly_norm";
+    case AletheRule::BV_POLY_NORM: return "bv_poly_norm";
     //================================================= Hole
     case AletheRule::HOLE: return "hole";
     //================================================= Undefined rule

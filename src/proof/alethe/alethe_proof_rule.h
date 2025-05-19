@@ -388,6 +388,7 @@ enum class AletheRule : uint32_t
   EQUIV_SIMPLIFY,
   BOOL_SIMPLIFY,
   AC_SIMP,
+  BV_ACI_SIMP,
   QUANTIFIER_SIMPLIFY,
   DIV_SIMPLIFY,
   PROD_SIMPLIFY,
@@ -461,6 +462,7 @@ enum class AletheRule : uint32_t
   BV_BITBLAST_STEP_CONST,
   BV_BITBLAST_STEP_SIGN_EXTEND,
   ARITH_POLY_NORM,
+  BV_POLY_NORM,
   // ======== hole
   // Used for unjustified steps
   HOLE,
