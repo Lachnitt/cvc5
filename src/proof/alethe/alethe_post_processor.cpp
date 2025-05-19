@@ -555,8 +555,52 @@ bool AletheProofPostprocessCallback::update(Node res,
       return updateTheoryRewriteProofRewriteRule(
           res, children, args, cdp, di);
     }
-    // Both ARITH_POLY_NORM and EVALUATE, which are used by the Rare
-    // elaboration, are captured by the "rare_rewrite" rule.
+    // We first normalize both sides
+    //
+    // If res[0] is of type Real:
+    //   vp1: (= res[0] (N(res[0])))
+    //   vp2: (= res[1] (N(res[1])))
+    //   vp3: (= (N(res[1])) res[1])
+    //   vp4: res
+    //
+    // If res[0] is of type Int:
+    //   vp1: (= (to_real res[0]) (N(res[0])))
+    //   vp2: (= (to_real res[1]) (N(res[1])))
+    //   vp3: (= (N(res[1])) (to_real res[1]))
+    //   vp4: (= (to_real res[0]) (to_real res[1]))
+    //   vp5: (= (to_int (to_real res[0])) (to_int (to_real res[1])))
+    //   vp6: (= (to_int (to_real res[0])) res[0])
+    //   vp7: (= res[0] (to_int (to_real res[0])))
+    //   vp8: (= (to_int (to_real res[1])) res[1])
+    //
+    // As an invariant (= (N(res[0])) (N(res[1]))) has to hold
+    // 
+    // Then,
+    //                                     vp2
+    //                        ------------------------- SYMM
+    //         vp1                         vp3
+    //   ----------------------------------------------- TRANS
+    //                         vp4
+    //
+    // If res[0] is of type Int:
+    //   ------- rule
+    //     vp6             vp4
+    //   ------- SYMM    ------- CONG      -------- rule 
+    //     vp7             vp5                vp8
+    //   -------------------------------------------  TRANS
+    //                       res
+    //
+    // , where rule is RARE_REWRITE with argument arith_to_int_to_real
+    case ProofRule::BV_POLY_NORM:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
     case ProofRule::ARITH_POLY_NORM:
     {
       Assert(res.getNumChildren() >= 2);
