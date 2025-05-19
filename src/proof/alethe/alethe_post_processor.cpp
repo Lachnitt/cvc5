@@ -1699,6 +1699,16 @@ bool AletheProofPostprocessCallback::update(Node res,
     //                       res
     //
     // , where rule is RARE_REWRITE with argument arith_to_int_to_real
+    case ProofRule::BV_POLY_NORM:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
     case ProofRule::ARITH_POLY_NORM:
     {
       Assert(res.getNumChildren() >= 2);
@@ -1714,7 +1724,7 @@ bool AletheProofPostprocessCallback::update(Node res,
       else if (res[0].getType().isBitVector())
       {
          return addAletheStep(
-            AletheRule::HOLE,
+            AletheRule::BV_POLY_NORM,
             res,
             nm->mkNode(Kind::SEXPR, d_cl, res),
             children,
@@ -2162,10 +2172,11 @@ bool AletheProofPostprocessCallback::update(Node res,
 			 *cdp);
 
       }
-      else if (k_LHS == Kind::BITVECTOR_AND || k_RHS == Kind::BITVECTOR_OR)
+      else if (k_LHS == Kind::BITVECTOR_AND || k_LHS == Kind::BITVECTOR_OR
+	    || k_RHS == Kind::BITVECTOR_XOR)
       {
 	// This will be supported in the future
-        return addAletheStep(AletheRule::HOLE,
+        return addAletheStep(AletheRule::BV_ACI_SIMP,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
                            children,
