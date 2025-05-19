@@ -978,11 +978,9 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 
 bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     Node res,
-    ProofRule id,
     const std::vector<Node>& children,
     const std::vector<Node>& args,
     CDProof* cdp,
-    bool& continueUpdate,
     ProofRewriteRule di)
 {
   NodeManager* nm = nodeManager();
@@ -990,31 +988,36 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
   switch (di)
   {
     // ======== DISTINCT_ELIM
-    // This rule is translated according to the clauses pattern. The only
-    // exception to this is if there are more than two terms that are distinct
-    // and they are boolean. The Alethe distinct_elim rule has a special
-    // handling in these cases and rewrites the distinct term to False directly
-    // (as the DISTINCT_CARD_CONFLICT rule does in cvc5).
-    case ProofRewriteRule::DISTINCT_ELIM:
-    {
-      Assert(res.getNumChildren() == 2);
-      Assert(res[0].getNumChildren() >= 2);
-      if (res[0][0].getType().isBoolean() && res[0].getNumChildren() == 2)
-      {
-        break;
-      }
-      return addAletheStep(AletheRule::DISTINCT_ELIM,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           children,
-                           new_args,
-                           *cdp);
-      break;
-    }
     // ======== DISTINCT_CARD_CONFLICT
-    // This rule is translated according to the clauses pattern.
+    // Both rules are translated according to the clauses pattern to
+    // distinct_elim. The only exception to this is when DISTINCT_ELIM results
+    // in a term with exactly two boolean arguments. The Alethe distinct_elim
+    // rule has a special handling in this case and rewrites the distinct term
+    // to False directly (as the DISTINCT_CARD_CONFLICT rule does in cvc5).
+    // Instead, we output a RARE_REWRITE step using the distinct_two_bool_elim
+    // rule.
+    //
+    // (define-rule distinct_bin_bool_elim ((t1 Bool) (t2 Bool))
+    // (distinct t1 t2)
+    // (not (= t1 t2)))
+    case ProofRewriteRule::DISTINCT_ELIM:
     case ProofRewriteRule::DISTINCT_CARD_CONFLICT:
     {
+      Node eq = res[0];
+      Node t1 = eq[0];
+      if (di == ProofRewriteRule::DISTINCT_ELIM && t1.getType().isBoolean()
+          && eq.getNumChildren() == 2)
+      {
+        return addAletheStep(
+            AletheRule::RARE_REWRITE,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            {},
+            {nm->mkRawSymbol("\"distinct_bin_bool_elim\"", nm->sExprType()),
+             t1,
+             eq[1]},
+            *cdp);
+      }
       return addAletheStep(AletheRule::DISTINCT_ELIM,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
@@ -1204,6 +1207,8 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            *cdp);
     }
+    // ======== QUANT_MERGE_PRENEX
+    // This rule is translated according to the clause pattern.
     case ProofRewriteRule::QUANT_MERGE_PRENEX:
     {
       return addAletheStep(AletheRule::QNT_JOIN,
@@ -1212,8 +1217,9 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            {},
                            *cdp);
-   
     }
+    // ======== QUANT_UNUSED_VARS
+    // This rule is translated according to the clause pattern.
     case ProofRewriteRule::QUANT_UNUSED_VARS:
     {
       return addAletheStep(AletheRule::QNT_RM_UNUSED,
@@ -1222,9 +1228,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            {},
                            *cdp);
-   
     }
-
     // TODO: Duplicates 
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
@@ -1586,9 +1590,16 @@ bool AletheProofPostprocessCallback::update(Node res,
 
       return success;
     }
+    // ======== Encode equality introduction
+    // This rule is translated according to the singleton pattern.
     case ProofRule::ENCODE_EQ_INTRO:
     {
-      return addAletheStep(AletheRule::REFL,res,nm->mkNode(Kind::SEXPR,d_cl,res),{},{},*cdp);
+      return addAletheStep(AletheRule::REFL,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+                           {},
+                           *cdp);
     }
     // The conversion is into a "rare_rewrite" step where the first argument is
     // a string literal with the name of the rewrite, followed by the arguments,
@@ -2254,13 +2265,12 @@ bool AletheProofPostprocessCallback::update(Node res,
       std::stringstream ss;
       if (hasTrustId)
       {
+        ss << "\"" << tid << "\"";
         cvc5::internal::theory::TheoryId thid;
-        bool hasTheoryId = theory::builtin::BuiltinProofRuleChecker::getTheoryId(args[0], thid);
-        if (hasTheoryId){
-          ss << "\"" << tid << "\" \"" << thid << "\"";
-	}
-        else{
-          ss << "\"" << tid << "\"";
+        if (theory::builtin::BuiltinProofRuleChecker::getTheoryId(args[0],
+                                                                  thid))
+        {
+          ss << " \"" << thid << "\"";
         }
       }
       else
