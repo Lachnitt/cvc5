@@ -64,8 +64,8 @@ AletheProofPostprocessCallback::AletheProofPostprocessCallback(
     Env& env, AletheNodeConverter& anc, bool resPivots)
     : EnvObj(env), d_anc(anc), d_resPivots(resPivots)
 {
-  NodeManager* nm = nodeManager();
-  d_cl = NodeManager::mkBoundVar("cl", nm->sExprType());
+  NodeManager* nm = env.getNodeManager();
+  d_cl = nm->mkBoundVar("cl", nm->sExprType());
   d_true = nm->mkConst(true);
   d_false = nm->mkConst(false);
 }
@@ -288,7 +288,7 @@ void addPolyNegProof(Node p, CDProof* cdp){
 // be of type real but of type int. 
 theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDProof* cdp)
 {
-  NodeManager* nm = NodeManager::currentNM();
+  NodeManager* nm = n.getNodeManager();
   Rational zero(0);
   Rational one(1);
   Node null;
@@ -977,7 +977,7 @@ theory::arith::PolyNorm AletheProofPostprocessCallback::mkPolyNorm(TNode n, CDPr
 }
 
 bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
-    Node res,
+    Node& res,
     const std::vector<Node>& children,
     const std::vector<Node>& args,
     CDProof* cdp,
@@ -1665,7 +1665,7 @@ bool AletheProofPostprocessCallback::update(Node res,
       if (rewriter::getRewriteRule(args[0], di))
       {
         return updateTheoryRewriteProofRewriteRule(
-            res, id, children, args, cdp, continueUpdate, di);
+            res, children, args, cdp, di);
       }
       return addAletheStep(AletheRule::HOLE,
                            res,

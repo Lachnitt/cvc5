@@ -28,6 +28,7 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
   if (cache.find(term) != cache.end()){
      return cache[term];
   }
+  NodeManager* nm = term.getNodeManager();
   Kind k = term.getKind();
   Node result;
   //std::cout << "term: " << term << " kind " << k << std::endl;
@@ -57,7 +58,7 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
       return new_children[0];
     }
     else {
-      result = NodeManager::currentNM()->mkNode(k, new_children);
+      result = nm->mkNode(k, new_children);
     }
   }
   else if (term.getNumChildren() == 0){
@@ -72,7 +73,7 @@ Node applyAcSimp(std::map<Node,Node>& cache, Node term){
     if (k == Kind::APPLY_UF){
       new_children.insert(new_children.begin(),term.getOperator());
     }
-    result = NodeManager::currentNM()->mkNode(k,new_children);
+    result = nm->mkNode(k,new_children);
   }
   cache.insert({term,result});
   return result;
@@ -83,7 +84,7 @@ Node applyNarySimplify(Node res){
   Trace("alethe-proof") << "simplifying " << res << "\n";
   Kind k = res.getKind();
   Assert(k == Kind::AND || k == Kind::OR);
-  NodeManager* nm = NodeManager::currentNM();
+  NodeManager* nm = res.getNodeManager();
   std::vector<Node> new_children;
   std::vector<Node> without_negation;
   Node inverse = (k==Kind::AND ? nm->mkConst(false) : nm->mkConst(true));
@@ -112,7 +113,7 @@ Node applyNarySimplify(Node res){
   }
   Node simplifiedFlattenedRes = (new_children.size() == 0 ? nt : (new_children.size() == 1
            ? new_children[0]
-           : NodeManager::currentNM()->mkNode(k, new_children)));
+           : nm->mkNode(k, new_children)));
   Trace("alethe-proof") << "finished simplifying, result: " << simplifiedFlattenedRes << "\n";
   return simplifiedFlattenedRes;
 }

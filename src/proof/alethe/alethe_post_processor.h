@@ -163,7 +163,7 @@ class AletheProofPostprocessCallback : protected EnvObj,
    * @param di The id of the ProofRewriteRule the THEORY_REWRITE step expresses,
    * @return True if the step could be added, or false if not.
    */
-  bool updateTheoryRewriteProofRewriteRule(Node res,
+  bool updateTheoryRewriteProofRewriteRule(Node& res,
                                            const std::vector<Node>& children,
                                            const std::vector<Node>& args,
                                            CDProof* cdp,
