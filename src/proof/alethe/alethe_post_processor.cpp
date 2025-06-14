@@ -1229,6 +1229,30 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            *cdp);
     }
+    case ProofRewriteRule::BV_BITWISE_SLICING:
+    {
+    return addAletheStep(
+            AletheRule::BV_BITWISE_SLICING,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+    case ProofRewriteRule::BV_REPEAT_ELIM:
+    {
+    return addAletheStep(
+            AletheRule::BV_REPEAT_ELIM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+
+
+
+
     // TODO: Duplicates 
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
@@ -1710,16 +1734,6 @@ bool AletheProofPostprocessCallback::update(Node res,
     //                       res
     //
     // , where rule is RARE_REWRITE with argument arith_to_int_to_real
-    case ProofRule::BV_POLY_NORM:
-    {
-    return addAletheStep(
-            AletheRule::BV_POLY_NORM,
-            res,
-            nm->mkNode(Kind::SEXPR, d_cl, res),
-            children,
-	    {},
-            *cdp);
-    }
     case ProofRule::ARITH_POLY_NORM:
     {
       Assert(res.getNumChildren() >= 2);
@@ -1862,6 +1876,28 @@ bool AletheProofPostprocessCallback::update(Node res,
         return success;
       }
     }
+    case ProofRule::BV_POLY_NORM:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+    //Note; Update once rule changes and scaling factors are not 1 anymore
+    case ProofRule::BV_POLY_NORM_EQ:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM_EQ,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+
 
     //
     // --------- rare_rewrite
