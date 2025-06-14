@@ -166,7 +166,79 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            *cdp);
     }
-    default: break;
+    case ProofRewriteRule::BV_BITWISE_SLICING:
+    {
+    return addAletheStep(
+            AletheRule::BV_BITWISE_SLICING,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+    case ProofRewriteRule::BV_REPEAT_ELIM:
+    {
+    return addAletheStep(
+            AletheRule::BV_REPEAT_ELIM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+
+
+
+
+    // TODO: Duplicates 
+    case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
+    {
+      if (res[0][1].getKind()==Kind::OR){
+         //((forall x. x != t \/ F)) =  F{x ->t}
+         Node LHS_body = res[0][1];
+         Node F;
+         if (LHS_body.getNumChildren() == 2){
+           F = LHS_body[1];
+         }
+         else{
+           std::vector<Node> F_clauses = {};
+           F_clauses.insert(F_clauses.end(),LHS_body.begin()+1,LHS_body.end());
+           F = nm->mkNode(Kind::OR,F_clauses);
+         }
+         Node x_t = LHS_body[0][0];
+         Node x = x_t[0];
+         Node t = x_t[1];
+         Node vp1 = nm->mkNode(Kind::EQUAL,F,res[1]);
+         new_args.push_back(x);
+         new_args.push_back(nm->mkNode(Kind::EQUAL,x,t));
+         return addAletheStep(AletheRule::REFL,
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                           {},
+                           {},
+                           *cdp)
+          && addAletheStep(AletheRule::ANCHOR_ONEPOINT,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {vp1},
+                           new_args,
+                           *cdp);
+      }
+      else{
+        return addAletheStep(AletheRule::RARE_REWRITE,
+                           res,
+                           nm->mkNode(Kind::SEXPR, d_cl, res),
+                           {},
+	                   {nm->mkRawSymbol("\"quant_var_elim_eq\"", nm->sExprType()),res[0][1][0],res[0][1][1]},
+                           *cdp);
+     }
+
+    }
+    default: 
+      std::stringstream ss;
+      ss << "\"" << di << "\"";
+      new_args.push_back(NodeManager::mkRawSymbol(ss.str(), nm->sExprType()));
+      break;
   }
   return addAletheStep(AletheRule::HOLE,
                        res,
@@ -591,16 +663,6 @@ bool AletheProofPostprocessCallback::update(Node res,
     //                       res
     //
     // , where rule is RARE_REWRITE with argument arith_to_int_to_real
-    case ProofRule::BV_POLY_NORM:
-    {
-    return addAletheStep(
-            AletheRule::BV_POLY_NORM,
-            res,
-            nm->mkNode(Kind::SEXPR, d_cl, res),
-            children,
-	    {},
-            *cdp);
-    }
     case ProofRule::ARITH_POLY_NORM:
     {
       Assert(res.getNumChildren() >= 2);
@@ -743,6 +805,28 @@ bool AletheProofPostprocessCallback::update(Node res,
         return success;
       }
     }
+    case ProofRule::BV_POLY_NORM:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+    //Note; Update once rule changes and scaling factors are not 1 anymore
+    case ProofRule::BV_POLY_NORM_EQ:
+    {
+    return addAletheStep(
+            AletheRule::BV_POLY_NORM_EQ,
+            res,
+            nm->mkNode(Kind::SEXPR, d_cl, res),
+            children,
+	    {},
+            *cdp);
+    }
+
 
     //
     // --------- rare_rewrite

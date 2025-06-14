@@ -463,6 +463,9 @@ enum class AletheRule : uint32_t
   BV_BITBLAST_STEP_SIGN_EXTEND,
   ARITH_POLY_NORM,
   BV_POLY_NORM,
+  BV_POLY_NORM_EQ,
+  BV_BITWISE_SLICING,
+  BV_REPEAT_ELIM,
   // ======== hole
   // Used for unjustified steps
   HOLE,
