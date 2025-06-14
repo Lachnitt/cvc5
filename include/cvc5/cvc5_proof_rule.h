@@ -2809,10 +2809,11 @@ enum ENUM(ProofRewriteRule)
    * **Bitvectors -- Extract continuous substrings of bitvectors**
    *
    * .. math::
-   *    bvand(a,\ c) = concat(bvand(a[i_0:j_0],\ c_0) ... bvand(a[i_n:j_n],\ c_n))
+   *    f(a,\ c) = concat(f(a[i_0:j_0],\ c_0) ... f(a[i_n:j_n],\ c_n))
    *
-   * where c0,..., cn are maximally continuous substrings of 0 or 1 in the
-   * constant c \endverbatim
+   * where f is one of bvand, bvor or bvxor and  c0,..., cn are maximally continuous
+   * substrings of 0 or 1 in the constant c \endverbatim
+   *
    */
   EVALUE(BV_BITWISE_SLICING),
   /**
