@@ -1149,7 +1149,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 
       }
       else if (k_LHS == Kind::BITVECTOR_AND || k_LHS == Kind::BITVECTOR_OR
-	    || k_RHS == Kind::BITVECTOR_XOR)
+	    || k_LHS == Kind::BITVECTOR_XOR)
       {
 	// This will be supported in the future
         return addAletheStep(AletheRule::BV_ACI_SIMP,
