@@ -1098,15 +1098,13 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            {},
                            *cdp)
-        && addAletheStep(AletheRule::NOT_NOT,
+        && addAletheStepFromOr(AletheRule::NOT_NOT,
                            vp2b_1,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2b_1),
                            {},
                            {},
                            *cdp)
-        && addAletheStep(AletheRule::RESOLUTION,
+        && addAletheStepFromOr(AletheRule::RESOLUTION,
                            vp2c_1,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2c_1),
                            {vp2a_1,vp2b_1},
                            {},
                            *cdp)
@@ -1115,15 +1113,13 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            {},
                            {},
                            *cdp)
-        && addAletheStep(AletheRule::NOT_NOT,
+        && addAletheStepFromOr(AletheRule::NOT_NOT,
                            vp2b_2,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2b_2),
                            {},
                            {},
                            *cdp)
-        && addAletheStep(AletheRule::RESOLUTION,
+        && addAletheStepFromOr(AletheRule::RESOLUTION,
                            vp2c_2,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2c_2),
                            {vp2a_2,vp2b_2},
                            {},
                            *cdp)
