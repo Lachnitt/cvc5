@@ -374,38 +374,55 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     //
     //
     // In case a:
-    //   Let r = F{x->t}
+    //   Let F' = F{x->t}
+    //   r1 = (or (not (= t t)) F')
     //
+    // In case b:
+    //   Let Fi' = Fi{x->t}
+    //   F = (or F1 ... Fn)
+    //   F' = (or F1' ... Fn')
+    //   r1 = (or (not (= t t)) F1' ... Fn')
+    //
+    // Then, for both a and b:
     //   (anchor :step vp1 :args ((:= (x T) t)))
-    //   (step vp1_1 (cl (= F r)) :rule refl)
-    //   (step vp1 (cl (= (forall ((x)) (or (not (= x t)) F)) (or (not (= t t)) r))) :rule onepoint)
-    //   (step vp2 (cl (= (or (not (= t t)) r) r)  :rule rare_rewrite "or-not-refl")
+    //   (step vp1_1 (cl (= res[0] F') :rule refl)
+    //   (step vp1 (cl (= res[0] r1)) :rule onepoint)
+    //   (step vp2 (cl (= r1 F') :rule rare_rewrite "or-not-refl")
     //   (step vp3 (cl res) :prems vp1 vp3 :rule trans)
+ 
     // TODO: Duplicates 
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
       Node LHS_body = res[0][1];
       // Case a) & b)
       if (LHS_body.getKind() == Kind::OR){
-         Node F;
-         if (LHS_body.getNumChildren() == 2){
-           F = LHS_body[1];
-         }
-         else{
-           std::vector<Node> F_clauses = {};
-           F_clauses.insert(F_clauses.end(),LHS_body.begin()+1,LHS_body.end());
-           F = nm->mkNode(Kind::OR,F_clauses);
-         }
          Node x_t = LHS_body[0][0];
          Node x = x_t[0];
          Node t = x_t[1];
 	 Node t_t = nm->mkNode(Kind::EQUAL,t,t);
 	 Node not_t_t = t_t.notNode();
-	 Node r = res[1];
-         Node vp1_1 = nm->mkNode(Kind::EQUAL,F,r);
-	 Node or_not_t_t_r = nm->mkNode(Kind::OR,not_t_t,r);
-	 Node vp1 = nm->mkNode(Kind::EQUAL,res[0],or_not_t_t_r);
-	 Node vp2 = nm->mkNode(Kind::EQUAL,or_not_t_t_r,r);
+
+         Node F;
+         Node F_r;
+	 Node r1;
+         if (LHS_body.getNumChildren() == 2){
+           F = LHS_body[1];
+	   F_r = res[1];
+	   r1 = nm->mkNode(Kind::OR,not_t_t,F_r);
+         }
+         else{
+           std::vector<Node> F_clauses = {};
+           F_clauses.insert(F_clauses.end(),LHS_body.begin()+1,LHS_body.end());
+           F = nm->mkNode(Kind::OR,F_clauses);
+           std::vector<Node> F_r_clauses = {};
+           F_r_clauses.insert(F_r_clauses.end(),res[1].begin(),res[1].end());
+           F_r = nm->mkNode(Kind::OR,F_r_clauses);
+	   F_r_clauses.insert(F_r_clauses.begin(),not_t_t);
+	   r1 = nm->mkNode(Kind::OR,F_r_clauses);
+         }
+         Node vp1_1 = nm->mkNode(Kind::EQUAL,res[0][1],r1);
+	 Node vp1 = nm->mkNode(Kind::EQUAL,res[0],r1);
+	 Node vp2 = nm->mkNode(Kind::EQUAL,r1,F_r);
          new_args.push_back(nm->mkNode(Kind::EQUAL,x,t));
 
          return addAletheStep(AletheRule::REFL,
@@ -424,7 +441,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            vp2,
                            nm->mkNode(Kind::SEXPR, d_cl, vp2),
                            {},
-	                   {nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),t,r},
+	                   {nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),r1,F_r},
                            *cdp)
           && addAletheStep(AletheRule::TRANS,
                            res,
