@@ -365,15 +365,28 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
             *cdp);
     }
 
-
-
-
+    // ======== QUANT_VAR_ELIM_EQ
+    // 
+    // Either 
+    //  a) (forall ((x)) (or (not (= x t)) F)) = F{x->t}
+    //  b) (forall ((x)) (or (not (= x t)) F1 ... Fn)) = (or F1 ... Fn){x->t}
+    //  c) (forall ((x)) (not (= x t))) = False
+    //
+    //
+    // In case a:
+    //   Let r = F{x->t}
+    //
+    //   (anchor :step vp1 :args ((:= (x T) t)))
+    //   (step vp1_1 (cl (= F r)) :rule refl)
+    //   (step vp1 (cl (= (forall ((x)) (or (not (= x t)) F)) (or (not (= t t)) r))) :rule onepoint)
+    //   (step vp2 (cl (= (or (not (= t t)) r) r)  :rule rare_rewrite "or-not-refl")
+    //   (step vp3 (cl res) :prems vp1 vp3 :rule trans)
     // TODO: Duplicates 
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
-      if (res[0][1].getKind()==Kind::OR){
-         //((forall x. x != t \/ F)) =  F{x ->t}
-         Node LHS_body = res[0][1];
+      Node LHS_body = res[0][1];
+      // Case a) & b)
+      if (LHS_body.getKind() == Kind::OR){
          Node F;
          if (LHS_body.getNumChildren() == 2){
            F = LHS_body[1];
@@ -386,22 +399,42 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
          Node x_t = LHS_body[0][0];
          Node x = x_t[0];
          Node t = x_t[1];
-         Node vp1 = nm->mkNode(Kind::EQUAL,F,res[1]);
-         new_args.push_back(x);
+	 Node t_t = nm->mkNode(Kind::EQUAL,t,t);
+	 Node not_t_t = t_t.notNode();
+	 Node r = res[1];
+         Node vp1_1 = nm->mkNode(Kind::EQUAL,F,r);
+	 Node or_not_t_t_r = nm->mkNode(Kind::OR,not_t_t,r);
+	 Node vp1 = nm->mkNode(Kind::EQUAL,res[0],or_not_t_t_r);
+	 Node vp2 = nm->mkNode(Kind::EQUAL,or_not_t_t_r,r);
          new_args.push_back(nm->mkNode(Kind::EQUAL,x,t));
+
          return addAletheStep(AletheRule::REFL,
-                           vp1,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                           vp1_1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1_1),
                            {},
                            {},
                            *cdp)
-          && addAletheStep(AletheRule::ANCHOR_ONEPOINT,
+         && addAletheStep(AletheRule::ANCHOR_ONEPOINT,
+                           vp1,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
+                           {vp1_1},
+                           new_args,
+                           *cdp)
+	 && addAletheStep(AletheRule::RARE_REWRITE,
+                           vp2,
+                           nm->mkNode(Kind::SEXPR, d_cl, vp2),
+                           {},
+	                   {nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),t,r},
+                           *cdp)
+          && addAletheStep(AletheRule::TRANS,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {vp1},
-                           new_args,
+                           {vp1,vp2},
+			   {},
                            *cdp);
+         
       }
+      // Case c)
       else{
         return addAletheStep(AletheRule::RARE_REWRITE,
                            res,
