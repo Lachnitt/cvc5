@@ -1248,30 +1248,42 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
 
     // ======== QUANT_VAR_ELIM_EQ
     // 
-    // Either 
+    // The conclusion of this rule can take any of the following three forms:
     //  a) (forall ((x)) (or (not (= x t)) F)) = F{x->t}
     //  b) (forall ((x)) (or (not (= x t)) F1 ... Fn)) = (or F1 ... Fn){x->t}
     //  c) (forall ((x)) (not (= x t))) = False
     //
     //
     // In case a:
-    //   Let F' = F{x->t}
+    //   Let F' = F{x->t},
     //   r1 = (or (not (= t t)) F')
     //
     // In case b:
-    //   Let Fi' = Fi{x->t}
-    //   F = (or F1 ... Fn)
-    //   F' = (or F1' ... Fn')
+    //   Let Fi' = Fi{x->t},
+    //   F = (or F1 ... Fn),
+    //   F' = (or F1' ... Fn'),
     //   r1 = (or (not (= t t)) F1' ... Fn')
     //
     // Then, for both a and b:
-    //   (anchor :step vp1 :args ((:= (x T) t)))
-    //   (step vp1_1 (cl (= res[0] F') :rule refl)
-    //   (step vp1 (cl (= res[0] r1)) :rule onepoint)
-    //   (step vp2 (cl (= r1 F') :rule rare_rewrite "or-not-refl")
-    //   (step vp3 (cl res) :prems vp1 vp3 :rule trans)
- 
-    // TODO: Duplicates 
+    //
+    // --------- refl
+    //   VP1_1
+    // --------- anchor_onepoint, (:= (x T) t)    ------ rare_rewrite, "or-not-refl"
+    //    VP1                                       VP2
+    // ------------------------------------------------- trans
+    //                  (cl (= r1 F'))
+    // 
+    // VP1_1: (cl (= res[0] F'))
+    // VP1: (cl (= res[0] r1))
+    // VP2: (cl (= r1 F'))
+    //
+    // In case c:
+    //   
+    //   ------------------------------------ rare_rewrite, "quant-var-elim-eq"
+    // (forall ((x)) (not (= x t))) = False
+    //
+    // (define-rule quant-var-elim-eq ((x ?) (t ?)) (not (= x t)) False)
+    //
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
       Node LHS_body = res[0][1];
