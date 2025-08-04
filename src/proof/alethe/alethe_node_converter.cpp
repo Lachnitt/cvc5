@@ -296,6 +296,8 @@ Node AletheNodeConverter::postConvert(Node n)
     case Kind::TO_INTEGER:
     case Kind::TO_REAL:
     case Kind::POW2:
+    case Kind::INTS_LOG2:
+    case Kind::INTS_ISPOW2:
     /* from BV */
     case Kind::BITVECTOR_TYPE:
     case Kind::CONST_BITVECTOR:
