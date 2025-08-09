@@ -1808,21 +1808,28 @@ bool AletheProofPostprocessCallback::update(Node res,
 
 	
         //Node LHS = mkPolyNorm(res[0],cdp).theory::arith::PolyNorm::toNode(nm->realType());
-        Node LHS = theory::arith::PolyNorm::mkPolyNorm(res[0]).theory::arith::PolyNorm::toNode(nm->realType());
+	theory::arith::PolyNorm LHS = theory::arith::PolyNorm::mkPolyNorm(res[0]);
+        Node tr_LHS = is_int ?
+	  nm->mkNode(Kind::TO_REAL,LHS.theory::arith::PolyNorm::toNode(nm->integerType())):
+	  LHS.theory::arith::PolyNorm::toNode(nm->realType());
+
     	Node tr_res0 = is_int ? nm->mkNode(Kind::TO_REAL,res[0]) : res[0];
-        Trace("alethe-proof") << "Normalized res[0] " << tr_res0 << " to " << LHS << std::endl;
+        Trace("alethe-proof") << "Normalized res[0] " << tr_res0 << " to " << tr_LHS << std::endl;
         
 	//Node RHS = mkPolyNorm(res[1],cdp).theory::arith::PolyNorm::toNode(nm->realType());
-        Node RHS = theory::arith::PolyNorm::mkPolyNorm(res[1]).theory::arith::PolyNorm::toNode(nm->realType());
+	theory::arith::PolyNorm RHS = theory::arith::PolyNorm::mkPolyNorm(res[1]);
+        Node tr_RHS = is_int ?
+	  nm->mkNode(Kind::TO_REAL,RHS.theory::arith::PolyNorm::toNode(nm->integerType())):
+	  RHS.theory::arith::PolyNorm::toNode(nm->realType());
 	Node tr_res1 = is_int ? nm->mkNode(Kind::TO_REAL,res[1]) : res[1];
-        Trace("alethe-proof") << "Normalized res[1] " << tr_res1 << " to " << RHS << std::endl;
+        Trace("alethe-proof") << "Normalized res[1] " << tr_res1 << " to " << tr_RHS << std::endl;
 
-        Assert(LHS == RHS);
+        Assert(tr_LHS == tr_RHS);
 
 
-        Node vp1 = nm->mkNode(Kind::EQUAL, tr_res0, LHS);
-        Node vp2 = nm->mkNode(Kind::EQUAL, tr_res1, RHS);
-        Node vp3 = nm->mkNode(Kind::EQUAL, RHS, tr_res1);
+        Node vp1 = nm->mkNode(Kind::EQUAL, tr_res0, tr_LHS);
+        Node vp2 = nm->mkNode(Kind::EQUAL, tr_res1, tr_RHS);
+        Node vp3 = nm->mkNode(Kind::EQUAL, tr_RHS, tr_res1);
         Node vp4 = nm->mkNode(Kind::EQUAL, tr_res0, tr_res1);
 
 
