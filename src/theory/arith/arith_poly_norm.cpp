@@ -315,6 +315,100 @@ Node PolyNorm::toNode(const TypeNode& tn) const
   return nm->mkNode(addKind, sum);
 }
 
+//For already normalized nodes only
+Node PolyNorm::toNode2(const TypeNode& tn) const
+{
+  std::vector<Node> sum;
+  NodeManager* nm = tn.getNodeManager();
+  bool isArith = (tn.isInteger() || tn.isReal());
+  bool isBv = tn.isBitVector();
+  Kind multKind;
+  Kind addKind;
+  Node one;
+  if (isArith)
+  {
+    multKind = Kind::MULT;
+    addKind = Kind::ADD;
+    one = nm->mkConstRealOrInt(tn, Rational(1));
+  }
+  else if (isBv)
+  {
+    multKind = Kind::BITVECTOR_MULT;
+    addKind = Kind::BITVECTOR_ADD;
+    one = bv::utils::mkOne(nm, tn.getBitVectorSize());
+  }
+  else
+  {
+    return Node::null();
+  }
+  for (const std::pair<const Node, Rational>& m : d_polyNorm)
+  {
+    Node coeff;
+    if (isArith)
+    {
+      coeff = nm->mkConstRealOrInt(tn, m.second);
+    }
+    else
+    {
+      Assert(isBv);
+      coeff = nm->mkConst(
+          BitVector(tn.getBitVectorSize(), m.second.getNumerator()));
+    }
+    if (m.first.isNull())
+    {
+      sum.push_back(coeff);
+      continue;
+    }
+    Node t = m.first;
+    //std::cout << "t: " << t << std::endl;
+    //std::cout << "coeff: " << coeff << std::endl;
+    if (t.getKind() == Kind::SEXPR)
+    {
+      for (const auto& t1 : t)
+      {
+	std::cout << "t1: " << std::endl;
+      }
+      std::vector<Node> vars(t.begin(), t.end());
+      t = nm->mkNode(multKind, vars);
+    
+    }
+    Node tr_t = (t.getType().isInteger() && tn.isReal()) ? nm->mkNode(Kind::TO_REAL,t) : t;
+    if (coeff == one)
+    {
+      sum.push_back(tr_t);
+    }
+    else
+    {
+      Assert(t.getType().isComparableTo(tn));
+      
+      //std::cout << "t type: " << t.getType() << std::endl;
+      //std::cout << "tn type: " << tn << std::endl;
+      sum.push_back(nm->mkNode(multKind, {coeff, tr_t}));
+      //std::cout << "sum " << nm->mkNode(multKind, {coeff,tr_t}) << std::endl;;
+    }
+  }
+  if (sum.size() == 1)
+  {
+    return sum[0];
+  }
+  if (sum.empty())
+  {
+    if (isArith)
+    {
+      return nm->mkConstRealOrInt(tn, Rational(0));
+    }
+    else
+    {
+      Assert(isBv);
+      return bv::utils::mkZero(nm, tn.getBitVectorSize());
+    }
+  }
+  // must sort to ensure this method is idempotent
+  std::sort(sum.begin(), sum.end());
+  return nm->mkNode(addKind, sum);
+}
+
+
 Node PolyNorm::multMonoVar(TNode m1, TNode m2)
 {
   std::vector<TNode> vars = getMonoVars(m1);

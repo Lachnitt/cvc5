@@ -1809,9 +1809,12 @@ bool AletheProofPostprocessCallback::update(Node res,
 	
         //Node LHS = mkPolyNorm(res[0],cdp).theory::arith::PolyNorm::toNode(nm->realType());
 	theory::arith::PolyNorm LHS = theory::arith::PolyNorm::mkPolyNorm(res[0]);
+	//toNode does not return well-typed terms so we have to normalize the result
+	//thankfully, this involves only to add to_reals to variables since the result
+	//is in a normalized form
         Node tr_LHS = is_int ?
 	  nm->mkNode(Kind::TO_REAL,LHS.theory::arith::PolyNorm::toNode(nm->integerType())):
-	  LHS.theory::arith::PolyNorm::toNode(nm->realType());
+	  LHS.theory::arith::PolyNorm::toNode2(nm->realType());
 
     	Node tr_res0 = is_int ? nm->mkNode(Kind::TO_REAL,res[0]) : res[0];
         Trace("alethe-proof") << "Normalized res[0] " << tr_res0 << " to " << tr_LHS << std::endl;
@@ -1820,7 +1823,7 @@ bool AletheProofPostprocessCallback::update(Node res,
 	theory::arith::PolyNorm RHS = theory::arith::PolyNorm::mkPolyNorm(res[1]);
         Node tr_RHS = is_int ?
 	  nm->mkNode(Kind::TO_REAL,RHS.theory::arith::PolyNorm::toNode(nm->integerType())):
-	  RHS.theory::arith::PolyNorm::toNode(nm->realType());
+	  RHS.theory::arith::PolyNorm::toNode2(nm->realType());
 	Node tr_res1 = is_int ? nm->mkNode(Kind::TO_REAL,res[1]) : res[1];
         Trace("alethe-proof") << "Normalized res[1] " << tr_res1 << " to " << tr_RHS << std::endl;
 

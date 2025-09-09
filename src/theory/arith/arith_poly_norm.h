@@ -81,6 +81,7 @@ class PolyNorm
    * Convert the polynomial representation to a node
    */
   Node toNode(const TypeNode& tn) const;
+  Node toNode2(const TypeNode& tn) const;
   /**
    * Make polynomial from real term n. This method normalizes applications
    * of operators ADD, SUB, NEG, MULT, NONLINEAR_MULT, bitvector equivalent
