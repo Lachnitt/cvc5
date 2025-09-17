@@ -1257,32 +1257,36 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     // In case a:
     //   Let F' = F{x->t},
     //   r1 = (or (not (= t t)) F')
+    //   rwr = "or-not-refl-empty"
     //
     // In case b:
     //   Let Fi' = Fi{x->t},
     //   F = (or F1 ... Fn),
     //   F' = (or F1' ... Fn'),
     //   r1 = (or (not (= t t)) F1' ... Fn')
+    //   rwr = "or-not-refl"
     //
     // Then, for both a and b:
     //
     // --------- refl
     //   VP1_1
-    // --------- anchor_onepoint, (:= (x T) t)    ------ rare_rewrite, "or-not-refl"
+    // --------- anchor_onepoint, (:= (x T) t)    ------ rare_rewrite, rwr
     //    VP1                                       VP2
     // ------------------------------------------------- trans
     //                  (cl (= r1 F'))
     // 
     // VP1_1: (cl (= res[0] F'))
-    // VP1: (cl (= res[0] r1))
+    // VP1: (cl (= (forall ((x)) res[0]) r1))
     // VP2: (cl (= r1 F'))
+    // (define-rule or-not-refl-empty ((t ?) (x Bool)) (or (not (= t t)) x) x)
+    // (define-rule or-not-refl ((t ?) (x Bool) (xs Bool :list) (or (not (= t t)) x xs) (or x xs))
     //
     // In case c:
     //   
     //   ------------------------------------ rare_rewrite, "quant-var-elim-eq"
     // (forall ((x)) (not (= x t))) = False
     //
-    // (define-rule quant-var-elim-eq ((x ?) (t ?)) (not (= x t)) False)
+    // (define-rule quant-var-elim-eq ((x ?) (t ?)) (forall ((x)) (not (= x t))) False)
     //
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
     {
@@ -1298,10 +1302,13 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
          Node F;
          Node F_r;
 	 Node r1;
+	 std::vector<Node> rwr_args = {};
+
          if (LHS_body.getNumChildren() == 2){
            F = LHS_body[1];
 	   F_r = res[1];
 	   r1 = nm->mkNode(Kind::OR,not_t_t,F_r);
+	   rwr_args={nm->mkRawSymbol("\"or_not_refl_empty\"", nm->sExprType()),r1,F_r};
          }
          else{
            std::vector<Node> F_clauses = {};
@@ -1312,6 +1319,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
            F_r = nm->mkNode(Kind::OR,F_r_clauses);
 	   F_r_clauses.insert(F_r_clauses.begin(),not_t_t);
 	   r1 = nm->mkNode(Kind::OR,F_r_clauses);
+	   rwr_args={nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),r1,F_r[0],NodeManager::mkBoundVar("rare-list", nm->sExprType())};
          }
          Node vp1_1 = nm->mkNode(Kind::EQUAL,res[0][1],r1);
 	 Node vp1 = nm->mkNode(Kind::EQUAL,res[0],r1);
@@ -1334,7 +1342,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            vp2,
                            nm->mkNode(Kind::SEXPR, d_cl, vp2),
                            {},
-	                   {nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),r1,F_r},
+			   rwr_args,
                            *cdp)
           && addAletheStep(AletheRule::TRANS,
                            res,
