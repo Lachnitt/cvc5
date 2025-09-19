@@ -1,6 +1,6 @@
 ###############################################################################
 # Top contributors (to current version):
-#   Aina Niemetz, Vinícius Camillo, Gereon Kremer
+#   Aina Niemetz, Vinícius Camillo, Andrew Reynolds
 #
 # This file is part of the cvc5 project.
 #
@@ -58,7 +58,7 @@ cvc5_add_api_test(reset_assertions "")
 cvc5_add_api_test(smt2_compliance "")
 cvc5_add_api_test(two_solvers "")
 
-if (NOT ENABLE_SAFE_MODE)
+if (NOT ENABLE_SAFE_MODE AND NOT ENABLE_STABLE_MODE)
   cvc5_add_api_test(sep_log_api "")
 endif()
 

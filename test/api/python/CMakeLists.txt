@@ -1,6 +1,6 @@
 ###############################################################################
 # Top contributors (to current version):
-#   Daniel Larraz, Yoni Zohar, Andres Noetzli
+#   Daniel Larraz, Yoni Zohar, Andrew Reynolds
 #
 # This file is part of the cvc5 project.
 #
@@ -81,7 +81,7 @@ cvc5_add_python_api_test(pyapi_proj-issue306 proj-issue306.py)
 cvc5_add_python_api_test(pyapi_reset_assertions reset_assertions.py)
 cvc5_add_python_api_test(pyapi_two_solvers two_solvers.py)
 
-if (NOT ENABLE_SAFE_MODE)
+if (NOT ENABLE_SAFE_MODE AND NOT ENABLE_STABLE_MODE)
   cvc5_add_python_api_test(pyapi_issue4889 issue4889.py)
   cvc5_add_python_api_test(pyapi_sep_log_api sep_log_api.py)
 endif()
