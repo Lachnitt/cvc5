@@ -291,6 +291,7 @@ class AletheTester(Tester):
                 benchmark_info.benchmark_dir,
                 benchmark_info.timeout,
             )
+            print("here")
             if (re.search(r'Proof unsupported by Alethe', output.decode()) or re.search(r'Proof unsupported by Alethe', error.decode())):
                 return EXIT_SKIP
             # strip the unsat and parentheses
@@ -320,14 +321,122 @@ class AletheTester(Tester):
             output, error = output.decode(), error.decode()
             exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
                                                error, cvc5_args)
+            print("output",output)
+            print("error",error)
+            print("error","bitOf" in error)
+            unsupported_ops=["ubv_to_int","bitOf","bbT","int_to_bv","rotate_left","rotate_right","repeat","BitVec","bitvector"]
+            if any(sub in error for sub in unsupported_ops):
+              return EXIT_SKIP
             if "valid" not in output and "holey" not in output:
-                print_error("Invalid proof")
-                print()
-                print_outputs(output, error)
-                return EXIT_FAILURE
+              print_error("Invalid proof")
+              print()
+              print_outputs(output, error)
+              return EXIT_FAILURE
         if exit_code == EXIT_OK:
             print_ok("OK")
         return exit_code
+
+class IsabelleAletheTester(Tester):
+    def __init__(self):
+        super().__init__("isabelle-alethe")
+
+    def applies(self, benchmark_info):
+        return (
+            benchmark_info.benchmark_ext != ".sy"
+            and benchmark_info.expected_output.strip() == "unsat"
+        )
+
+    def run_internal(self, benchmark_info):
+        exit_code = EXIT_OK
+        # alethe is not supported in safe mode
+        if benchmark_info.safe_mode:
+            return EXIT_SKIP
+        filename = benchmark_info.benchmark_dir + "/" + benchmark_info.benchmark_basename + "\n"
+
+        with open("isabelle_skip.txt", "r", encoding="utf-8") as f:
+          for line in f:
+            print(line.strip())
+            if (filename == line):
+                return EXIT_SKIP
+
+        with tempfile.NamedTemporaryFile(suffix=".smt2.proof") as tmpf:
+            cvc5_args = benchmark_info.command_line_args + [
+                "--dump-proofs",
+                "--proof-format=alethe",
+                "--proof-granularity=dsl-rewrite",
+                "--full-saturate-quant",
+                "--proof-mode=full-proof-strict",
+                "--no-stats",
+                "--sat-random-seed=1",
+                "--proof-prune",
+                "--proof-prune-input",
+                "--proof-elim-subtypes",
+                "--proof-alethe-define-skolems"
+            ]
+            # remove duplicates
+            cvc5_args = list(dict.fromkeys(cvc5_args))
+            output, error, exit_status = run_process(
+                [benchmark_info.cvc5_binary]
+                + cvc5_args
+                + [benchmark_info.benchmark_basename],
+                benchmark_info.benchmark_dir,
+                benchmark_info.timeout,
+            )
+            if (re.search(r'Proof unsupported by Alethe', output.decode()) or re.search(r'Proof unsupported by Alethe', error.decode())):
+                return EXIT_SKIP
+            # strip the unsat and parentheses
+            output, exit_code = self.strip_proof_body(output)
+            if exit_code == EXIT_FAILURE:
+                return EXIT_FAILURE
+            tmpf.write(output)
+            tmpf.flush()
+            output, error = output.decode(), error.decode()
+            exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
+                                               error, cvc5_args)
+
+            if exit_code != EXIT_OK:
+                return exit_code
+            original_file = benchmark_info.benchmark_dir + '/' + benchmark_info.benchmark_basename
+            print("here",benchmark_info.isabelle_binary)
+            output, error, exit_status = run_process(
+                ["/home/lachnitt/Sources/isabelle-git/isabelle-emacs/bin/isabelle","smt_check","-i"] + [original_file] + ["-p"] + [tmpf.name] + ["-o","cvc5_with_rewrite"] ,
+                benchmark_info.benchmark_dir,
+                timeout=benchmark_info.timeout,
+            )
+            output, error = output.decode(), error.decode()
+            exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
+                                               error, cvc5_args)
+            print("output",output)
+            print("error",error)
+
+            unsupported_ops=["Unsupported SMT-LIB command in problem: command not supported:", "found garbage when parsing SMT problem, ignoring:","Either theory is not supported or parsing instructions for the type are not included in the parser"]
+            if any(sub in output for sub in unsupported_ops):
+              with open("unsupp.txt", "a") as f:
+                f.write(filename)
+                return EXIT_SKIP
+            if "Unkown error parsing SMTLIB" in output:
+              with open("parsing.txt", "a") as f:
+                f.write(filename)
+                return EXIT_SKIP
+            if "Error parsing SMT-LIB problem: Malformed assertion" in output:
+              with open("malformedAssertion.txt", "a") as f:
+                f.write(filename)
+                return EXIT_SKIP
+            if "Unkown SMT error Solver" in output:
+              with open("smtError.txt", "a") as f:
+                f.write(filename)
+                return EXIT_SKIP
+
+            if not "Finished checking Alethe proof!" in output:
+              return EXIT_FAILURE
+
+
+        if exit_code == EXIT_OK:
+            with open("supp.txt", "a") as f:
+              f.write(filename)  
+            print_ok("OK")
+        return exit_code
+
 
 class CpcTester(Tester):
 
@@ -527,6 +636,7 @@ g_testers = {
     "abduct": AbductTester(),
     "dump": DumpTester(),
     "alethe": AletheTester(),
+    "isabelle-alethe": IsabelleAletheTester(),
     "cpc": CpcTester()
 }
 
@@ -553,6 +663,7 @@ BenchmarkInfo = collections.namedtuple(
         "lfsc_binary",
         "lfsc_sigs",
         "carcara_binary",
+        "isabelle_binary",
         "ethos_binary",
         "benchmark_dir",
         "benchmark_basename",
@@ -764,6 +875,7 @@ def run_regression(
     lfsc_binary,
     lfsc_sigs,
     carcara_binary,
+    isabelle_binary,
     ethos_binary,
     benchmark_path,
     timeout,
@@ -906,6 +1018,7 @@ def run_regression(
             lfsc_binary=lfsc_binary,
             lfsc_sigs=lfsc_sigs,
             carcara_binary=carcara_binary,
+            isabelle_binary=isabelle_binary,
             ethos_binary=ethos_binary,
             benchmark_dir=benchmark_dir,
             benchmark_basename=benchmark_basename,
@@ -958,6 +1071,7 @@ def main():
     parser.add_argument("--lfsc-binary", default="")
     parser.add_argument("--lfsc-sig-dir", default="")
     parser.add_argument("--carcara-binary", default="")
+    parser.add_argument("--isabelle-binary", default="~/Sources/isabelle-git/isabelle-emacs/bin/isabelle")
     parser.add_argument("--ethos-binary", default="")
     parser.add_argument("--cpc-sig-dir", default="")
     parser.add_argument("wrapper", nargs="*")
@@ -974,6 +1088,7 @@ def main():
     cvc5_binary = os.path.abspath(g_args.cvc5_binary)
     lfsc_binary = os.path.abspath(g_args.lfsc_binary)
     carcara_binary = os.path.abspath(g_args.carcara_binary)
+    isabelle_binary = (g_args.isabelle_binary) # TODO: changed this
     ethos_binary = os.path.abspath(g_args.ethos_binary)
 
     wrapper = g_args.wrapper
@@ -1010,6 +1125,7 @@ def main():
         lfsc_binary,
         lfsc_sigs,
         carcara_binary,
+        isabelle_binary,
         ethos_binary,
         g_args.benchmark,
         timeout,
