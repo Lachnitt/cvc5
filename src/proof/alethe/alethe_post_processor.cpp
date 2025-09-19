@@ -1319,7 +1319,10 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
            F_r = nm->mkNode(Kind::OR,F_r_clauses);
 	   F_r_clauses.insert(F_r_clauses.begin(),not_t_t);
 	   r1 = nm->mkNode(Kind::OR,F_r_clauses);
-	   rwr_args={nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),r1,F_r[0],NodeManager::mkBoundVar("rare-list", nm->sExprType())};
+           std::vector<Node> list_arg{
+                NodeManager::mkBoundVar("rare-list", nm->sExprType())};
+           list_arg.insert(list_arg.end(), F_r.begin() + 1, F_r.end());
+	   rwr_args={nm->mkRawSymbol("\"or_not_refl\"", nm->sExprType()),t,F_r[0],nm->mkNode(Kind::SEXPR, list_arg)};
          }
          Node vp1_1 = nm->mkNode(Kind::EQUAL,res[0][1],r1);
 	 Node vp1 = nm->mkNode(Kind::EQUAL,res[0],r1);
