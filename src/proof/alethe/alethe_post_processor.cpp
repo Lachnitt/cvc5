@@ -1257,7 +1257,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     // In case a:
     //   Let F' = F{x->t},
     //   r1 = (or (not (= t t)) F')
-    //   rwr = "or-not-refl-empty"
+    //   rwr = "or-not-refl-empty", t, F'
     //
     // In case b:
     //   Let Fi' = Fi{x->t},
@@ -1308,7 +1308,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
            F = LHS_body[1];
 	   F_r = res[1];
 	   r1 = nm->mkNode(Kind::OR,not_t_t,F_r);
-	   rwr_args={nm->mkRawSymbol("\"or_not_refl_empty\"", nm->sExprType()),r1,F_r};
+	   rwr_args={nm->mkRawSymbol("\"or_not_refl_empty\"", nm->sExprType()),t,F_r};
          }
          else{
            std::vector<Node> F_clauses = {};
