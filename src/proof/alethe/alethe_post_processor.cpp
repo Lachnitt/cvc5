@@ -146,6 +146,8 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     }
     case ProofRewriteRule::EXISTS_ELIM:
     {
+	   //TODO: This can now be simpliied, with the update in the standard and will just use connective def
+	   //Put in PR 
     // (exists (x1 ... xn) F) = (not (forall (x1 ... xn) (not F)))
       Assert(res.getNumChildren() == 2);
       Assert(res[0].getNumChildren() == 2);
@@ -404,7 +406,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
     //   
     //   ------------------------------------ rare_rewrite, "quant-var-elim-eq"
     // (forall ((x)) (not (= x t))) = False
-    //
+    // TODO: Handle case c, the current rare-rewrite does not work
     // (define-rule quant-var-elim-eq ((x ?) (t ?)) (forall ((x)) (not (= x t))) False)
     //
     case ProofRewriteRule::QUANT_VAR_ELIM_EQ:
@@ -485,6 +487,7 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
      }
 
     }
+    //TODO: Move it out of the default case, should be done for all holes
     default: 
       std::stringstream ss;
       ss << "\"" << di << "\"";
@@ -827,6 +830,7 @@ bool AletheProofPostprocessCallback::update(Node res,
         std::stringstream ss;
         ss << "\"" << di << "\"";
         std::string ss_str = ss.str();
+	//TODO: Should be deleted
         if (ss_str == "eq-symm"){
           return addAletheStep(AletheRule::EQ_SYMMETRIC,
                            res,
