@@ -429,7 +429,7 @@ enum class AletheRule : uint32_t
   // where set representation of F1 and F2 are the same and the number of
   // literals in C2 is the same of that of C1.
   REORDERING,
-  // ======== bitvector
+  // ======== bitblast
   //  > i. (cl (= t bbt(t)))
   BV_BITBLAST_STEP_VAR,
   BV_BITBLAST_STEP_BVAND,
@@ -449,6 +449,11 @@ enum class AletheRule : uint32_t
   BV_BITBLAST_STEP_CONCAT,
   BV_BITBLAST_STEP_CONST,
   BV_BITBLAST_STEP_SIGN_EXTEND,
+  // ======== extended bit-vector rules
+  // These are not (yet) part of the Alethe Standard but are supported in
+  // Isabelle/HOL
+  BV_BITWISE_SLICING,
+  BV_REPEAT_ELIM,
   // ======== hole
   // Used for unjustified steps
   HOLE,
