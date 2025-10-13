@@ -1596,8 +1596,8 @@ bool AletheProofPostprocessCallback::update(Node res,
     }
     //================================================= Bitvector rules
     // ========  bitvector eager atom
-    // ------------------------ BV_BITBLAST_STEP_BV<KIND>
-    //  (cl (= t bitblast(t)))
+    // ------------------------ REFL
+    //  (cl (= F F))
     case ProofRule::BV_EAGER_ATOM:
     {
       Assert(res.getKind() == Kind::EQUAL && res[0][0] == res[1]);
