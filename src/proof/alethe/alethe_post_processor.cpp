@@ -519,7 +519,8 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            vp1_4,
                            nm->mkNode(Kind::SEXPR, d_cl, vp1_4),
                            {vp1_1,vp1_3},
-                           new_args,
+                           d_resPivots ? std::vector<Node>{vp1_1, d_true}
+                                       : std::vector<Node>(),
                            *cdp)
          && addAletheStep(AletheRule::ANCHOR_ONEPOINT,
                            res,
