@@ -144,180 +144,11 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
                            new_args,
                            *cdp);
     }
+    // ======== EXISTS_ELIM
+    // This rule is translated according to the clause pattern.
     case ProofRewriteRule::EXISTS_ELIM:
     {
-	   //TODO: This can now be simpliied, with the update in the standard and will just use connective def
-	   //Put in PR 
-    // (exists (x1 ... xn) F) = (not (forall (x1 ... xn) (not F)))
-      Assert(res.getNumChildren() == 2);
-      Assert(res[0].getNumChildren() == 2);
-      // vp1: (= (forall (x1 ... xn) (not F)) (not (exists (x1 ... xn) (not (not F)))) //connective_def
-
-      // vp2a_1: (cl (= (not (not F)) F) (not (not F)) F) by equiv_neg2
-      // vp2b_1: (cl (not (not (not F))) F) by not_not
-      // vp2c_1: (cl (= (not (not F)) F) F) by resolution vp2a vp2b
-
-      // vp2a_2: (cl (= (not (not F)) F) (not (not (not F))) (not F)) by equiv_neg1
-      // vp2b_2: (cl (not (not (not (not F)))) (not F))) by not_not
-      // vp2c_2: (cl (= (not (not F)) F) (not F)) by resolution vp2a_2 vp2b_2
-
-      // vp2d: (cl (= (not (not F)) F)) by resolution vp2c_1 vp2c_2
-      // vp2: (cl (= (exists (x1 .. xn) (not (not F))) (exists (x1 ... xn) F))) by bind
-      // vp3: (not (exists (x1 .. xn) (not (not F)))) = (not (exists (x1 ... xn) F)) by cong vp2e
-
-     // vp4: (= (forall (x1 ... xn) (not F)) (not (exists (x1 ... xn) F)) //trans
-     // vp5: (= (not (forall (x1 ... xn) (not F))) (not (not (exists (x1 ... xn) F))) //cong
-     // vp6: (= (not (not (exists (x1 ... xn) F))) (exists (x1 .. xn) F) //not_simplify 
-     // vp7: (= (not (forall (x1 ... xn) (not F))) (exists (x1 ... xn) F)) //trans
-     
-      Node exists_F = res[0];
-      Node not_forall_not_F = res[1];
-      Node variable_list = exists_F[0];
-      Node F = exists_F[1];
-      Node not_F = F.notNode();
-      Node not_not_F = not_F.notNode();
-      Node not_not_not_F = not_not_F.notNode();
-      Node not_not_not_not_F = not_not_not_F.notNode();
-      Node exists_not_not_F = nm->mkNode(Kind::EXISTS,variable_list,not_not_F);
-      Node forall_not_F = not_forall_not_F[0];
-      Node not_not_F_eq_F = nm->mkNode(Kind::EQUAL,not_not_F,F);
-
-      Node vp1 = nm->mkNode(Kind::EQUAL, forall_not_F, exists_not_not_F.notNode());
-
-      Node vp2a_1 = nm->mkNode(Kind::OR, not_not_F_eq_F, not_not_F,F);
-      Node vp2b_1 = nm->mkNode(Kind::OR, not_not_not_F, F);
-      Node vp2c_1 = nm->mkNode(Kind::OR, not_not_F_eq_F, F); 
-
-      Node vp2a_2 = nm->mkNode(Kind::OR, not_not_F_eq_F, not_not_not_F,not_F);
-      Node vp2b_2 = nm->mkNode(Kind::OR, not_not_not_not_F, not_F);
-      Node vp2c_2 = nm->mkNode(Kind::OR, not_not_F_eq_F, not_F);
-
-      Node vp2d = not_not_F_eq_F;
-      Node vp2 = nm->mkNode(Kind::EQUAL,exists_not_not_F,exists_F);
-      Node vp3 = nm->mkNode(Kind::EQUAL, exists_not_not_F.notNode(), exists_F.notNode());
-      new_args.insert(new_args.end(), res[0][0].begin(), res[0][0].end());
-      for (size_t i = 0, size = res[0][0].getNumChildren(); i < size; ++i)
-      {
-        new_args.push_back(res[0][0][i].eqNode(res[0][0][i]));
-      }
-
-      Node vp4 = nm->mkNode(Kind::EQUAL, forall_not_F, exists_F.notNode());
-
-      Node vp5 = nm->mkNode(Kind::EQUAL, forall_not_F.notNode(), exists_F.notNode().notNode());
-      Node vp6 = nm->mkNode(Kind::EQUAL, exists_F.notNode().notNode(), exists_F);
-      Node vp7 = nm->mkNode(Kind::EQUAL, forall_not_F.notNode(), exists_F);
-
-      return
-	addAletheStep(AletheRule::CONNECTIVE_DEF,
-                           vp1,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp1),
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStepFromOr(AletheRule::EQUIV_NEG2,
-                           vp2a_1,
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStepFromOr(AletheRule::NOT_NOT,
-                           vp2b_1,
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStepFromOr(AletheRule::RESOLUTION,
-                           vp2c_1,
-                           {vp2a_1,vp2b_1},
-                           {},
-                           *cdp)
-         && addAletheStepFromOr(AletheRule::EQUIV_NEG1,
-                           vp2a_2,
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStepFromOr(AletheRule::NOT_NOT,
-                           vp2b_2,
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStepFromOr(AletheRule::RESOLUTION,
-                           vp2c_2,
-                           {vp2a_2,vp2b_2},
-                           {},
-                           *cdp)
-
-        && addAletheStep(AletheRule::RESOLUTION,
-                           vp2d,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2d),
-                           {vp2c_1,vp2c_2},
-                           {},
-                           *cdp)
-        && addAletheStep(AletheRule::ANCHOR_BIND,
-                           vp2,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp2),
-                           {vp2d},
-                           new_args,
-                           *cdp)
-        && addAletheStep(AletheRule::CONG,
-                           vp3,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp3),
-                           {vp2},
-                           {},
-                           *cdp)
-        && addAletheStep(AletheRule::TRANS,
-                           vp4,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp4),
-                           {vp1,vp3},
-                           {},
-                           *cdp)
-        && addAletheStep(AletheRule::CONG,
-                           vp5,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp5),
-                           {vp4},
-                           {},
-                           *cdp)
-        && addAletheStep(AletheRule::NOT_SIMPLIFY,
-                           vp6,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp6),
-                           {},
-                           {},
-                           *cdp)
-        && addAletheStep(AletheRule::TRANS,
-                           vp7,
-                           nm->mkNode(Kind::SEXPR, d_cl, vp7),
-                           {vp5,vp6},
-                           {},
-                           *cdp)
-	&& addAletheStep(AletheRule::SYMM,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {vp7},
-                           {},
-                           *cdp);
-
-
-
-    }
-    case ProofRewriteRule::QUANT_MINISCOPE_AND:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_AND,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-    }
-    case ProofRewriteRule::QUANT_MINISCOPE_OR:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_OR,
-                           res,
-                           nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {},
-                           {},
-                           *cdp);
-    }
-    case ProofRewriteRule::QUANT_MINISCOPE_ITE:
-    {
-      return addAletheStep(AletheRule::QNT_MINISCOPE_ITE,
+      return addAletheStep(AletheRule::CONNECTIVE_DEF,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
                            {},
@@ -369,6 +200,10 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
 
     // ======== QUANT_VAR_ELIM_EQ
     // 
+=======
+    // ======== QUANT_VAR_ELIM_EQ
+    //
+>>>>>>> alethe_quant_var_elim_eq
     // The conclusion of this rule can take any of the following three forms:
     //  a) (forall ((x)) (or (not (= x t)) F)) = F{x->t}
     //  b) (forall ((x)) (or (not (= x t)) F1 ... Fn)) = (or F1 ... Fn){x->t}
@@ -507,9 +342,9 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
         Node x = vp1_1[0];
         Node t = vp1_1[1];
         Node vp1_5 = nm->mkNode(Kind::EQUAL, vp1_1.notNode(), true_node);
-        Node vp1_2 = nm->mkNode(Kind::EQUAL, vp1_4, vp1_1);
-        Node vp1_3 = nm->mkNode(Kind::EQUAL, vp1_1, vp1_4);
-        Node vp1_4 = nm->mkNode(Kind::OR, vp1_1.notNode(), vp1_4);
+        Node vp1_2 = nm->mkNode(Kind::EQUAL, vp1_5, vp1_1);
+        Node vp1_3 = nm->mkNode(Kind::EQUAL, vp1_1, vp1_5);
+        Node vp1_4 = nm->mkNode(Kind::OR, vp1_1.notNode(), vp1_5);
         std::vector<Node> rwr_args = {
             nm->mkRawSymbol("\"bool-not-false\"", nm->sExprType()), vp1_1};
         return addAletheStep(AletheRule::REFL,

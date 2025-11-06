@@ -1,4 +1,5 @@
 on: [push, pull_request]
+
 name: CI
 
 # Prevents github from relying on clones of homebrew-core or homebrew-cask.
@@ -258,7 +259,6 @@ jobs:
       cancel-in-progress: ${{ github.repository != 'cvc5/cvc5' || startsWith(github.ref, 'refs/pull/') }}
 
     steps:
-
     - uses: actions/checkout@v4
 
     # Ensure that the Java bindings, Java API tests, and Java examples are compatible
