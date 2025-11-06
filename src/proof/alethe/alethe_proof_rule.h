@@ -80,7 +80,6 @@ enum class AletheRule : uint32_t
   ANCHOR_ONEPOINT,
   // ======== input
   // > i. F
-  ANCHOR_ONEPOINT,
   ASSUME,
   //================================================= Rules of the Alethe
   // calculus

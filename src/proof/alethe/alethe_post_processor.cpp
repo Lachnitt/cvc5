@@ -200,10 +200,6 @@ bool AletheProofPostprocessCallback::updateTheoryRewriteProofRewriteRule(
 
     // ======== QUANT_VAR_ELIM_EQ
     // 
-=======
-    // ======== QUANT_VAR_ELIM_EQ
-    //
->>>>>>> alethe_quant_var_elim_eq
     // The conclusion of this rule can take any of the following three forms:
     //  a) (forall ((x)) (or (not (= x t)) F)) = F{x->t}
     //  b) (forall ((x)) (or (not (= x t)) F1 ... Fn)) = (or F1 ... Fn){x->t}
