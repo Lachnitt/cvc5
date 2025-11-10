@@ -2217,16 +2217,25 @@ bool AletheProofPostprocessCallback::update(Node res,
                            {},
                            *cdp);
     }
-    // ======== Replace term by its axiom definition
-    // For now this introduces a hole. The processing in the future should
-    // generate corresponding Alethe steps for each particular axiom for term
-    // removal (for example for the ITE case).
+    // ======== If-then-else equivalence
+    //
+    // ------- rare_rewrite, ite_eq
+    //   vp1
+    // ------- not_equiv2                      ------- true
+    //   vp2                                     vp3
+    // ----------------------------------------------- resolution
+    //   (cl (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)))*
+    //
+    // VP1: (cl (= (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) true))
+    // VP2: (cl (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) (not true))
+    // VP3: (cl true)
+    //
+    // * the corresponding proof node is (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2))
+    //
+    // (define-rule ite_eq ((C bool) (t1 ?) (t2 ?)) (ite C (= (C?t1:t2) t1) (= (C?t1:t2) t2)) true)
+    //
     case ProofRule::ITE_EQ:
     {
-      // vp1: (cl (= (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) true)) by rare_rewrite
-      // vp2: (cl (C?(= (C?t1:t2) t1):(= (C?t1:t2) t2)) (not true)) by not_equiv2
-      // vp3: (cl true) by true
-      // res by resolution on vp2 vp3 
       Node true_node = nm->mkConst(true);
       Node vp1 = nm->mkNode(Kind::EQUAL,res,true_node);
       Node vp2 = nm->mkNode(Kind::OR,res,true_node.notNode());
