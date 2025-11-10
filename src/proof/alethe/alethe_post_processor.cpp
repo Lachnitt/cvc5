@@ -2236,9 +2236,8 @@ bool AletheProofPostprocessCallback::update(Node res,
     //
     case ProofRule::ITE_EQ:
     {
-      Node true_node = nm->mkConst(true);
-      Node vp1 = nm->mkNode(Kind::EQUAL,res,true_node);
-      Node vp2 = nm->mkNode(Kind::OR,res,true_node.notNode());
+      Node vp1 = nm->mkNode(Kind::EQUAL,res,d_true);
+      Node vp2 = nm->mkNode(Kind::OR,res,d_true.notNode());
       return addAletheStep(AletheRule::RARE_REWRITE,
                            vp1,
                            nm->mkNode(Kind::SEXPR, d_cl, vp1),
@@ -2251,16 +2250,18 @@ bool AletheProofPostprocessCallback::update(Node res,
                            {},
                            *cdp)
        && addAletheStep(AletheRule::TRUE,
-                           true_node,
-                           nm->mkNode(Kind::SEXPR, d_cl, true_node),
+                           d_true,
+                           nm->mkNode(Kind::SEXPR, d_cl, d_true),
                            {},
                            {},
                            *cdp)
        && addAletheStep(AletheRule::RESOLUTION,
                            res,
                            nm->mkNode(Kind::SEXPR, d_cl, res),
-                           {vp2,true_node},
-                           {},
+                           {vp2,d_true},
+                           d_resPivots
+                           ? std::vector<Node>{d_true,d_false}
+                           : std::vector<Node>(),
                            *cdp);
     }
     // ======== Skolemize
