@@ -288,6 +288,7 @@ jobs:
         cache-key: ${{ matrix.build.cache-key }}
         install-ethos: ${{ contains(matrix.build.run_regression_args, '--tester cpc') }}
         install-carcara: ${{ contains(matrix.build.run_regression_args, '--tester alethe') }}
+        install-isabelle: ${{ contains(matrix.build.run_regression_args, '--tester isabelle') }}
         shell: ${{ matrix.build.shell }}
 
     - name: Configure and build

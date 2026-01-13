@@ -363,8 +363,18 @@ class IsabelleTester(Tester):
             return EXIT_SKIP
         with tempfile.NamedTemporaryFile(suffix=".smt2.proof") as tmpf:
             cvc5_args = benchmark_info.command_line_args + [
+                "--proof-format=alethe",
+                "--proof-granularity=dsl-rewrite",
+                "--full-saturate-quant",
+                "--proof-mode=full-proof-strict",
+                "--no-stats",
+                "--sat-random-seed=1",
+                "--lang=smt2",
+                "--proof-prune",
+                "--proof-prune-input",
+                "--proof-elim-subtypes",
+                "--proof-alethe-define-skolems",
                 "--dump-proofs",
-                "--proof-format=alethe"
             ]
             # remove duplicates
             cvc5_args = list(dict.fromkeys(cvc5_args))
@@ -386,10 +396,29 @@ class IsabelleTester(Tester):
             output, error = output.decode(), error.decode()
             exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
                                                error, cvc5_args)
-
             if exit_code != EXIT_OK:
                 return exit_code
             original_file = benchmark_info.benchmark_dir + '/' + benchmark_info.benchmark_basename
+            print("hhhhhh")
+            #  $ISABELLE_PATH smt_check -i $raw_filename.smt2 -p $raw_filename.alethe -o $config
+            # Error is currently empty but we might want to use it later. For now exit_code is
+            # always wrong
+            output, error, exit_status = run_process(
+                [benchmark_info.isabelle_binary] + ["smt_check"] +
+                ["-p"] + [tmpf.name] + ["-i"] + [original_file],
+                benchmark_info.benchmark_dir,
+                timeout=benchmark_info.timeout,
+            )
+            output, error = output.decode(), error.decode()
+            print("output",output)
+            print("error",error)
+            print("exit_status",exit_status)
+            exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
+                                               error, cvc5_args)
+            print("exit_code",exit_code)
+            if "Finished checking Alethe proof" in output:
+                return EXIT_OK
+         
         if exit_code == EXIT_OK:
             print_ok("OK")
         return exit_code
@@ -621,6 +650,7 @@ BenchmarkInfo = collections.namedtuple(
         "lfsc_binary",
         "lfsc_sigs",
         "carcara_binary",
+        "isabelle_binary",
         "ethos_binary",
         "benchmark_dir",
         "benchmark_basename",
@@ -834,6 +864,7 @@ def run_regression(
     lfsc_binary,
     lfsc_sigs,
     carcara_binary,
+    isabelle_binary,
     ethos_binary,
     benchmark_path,
     timeout,
@@ -978,6 +1009,7 @@ def run_regression(
             lfsc_binary=lfsc_binary,
             lfsc_sigs=lfsc_sigs,
             carcara_binary=carcara_binary,
+            isabelle_binary=isabelle_binary,
             ethos_binary=ethos_binary,
             benchmark_dir=benchmark_dir,
             benchmark_basename=benchmark_basename,
@@ -1031,6 +1063,7 @@ def main():
     parser.add_argument("--lfsc-binary", default="")
     parser.add_argument("--lfsc-sig-dir", default="")
     parser.add_argument("--carcara-binary", default="")
+    parser.add_argument("--isabelle-binary", default="")
     parser.add_argument("--ethos-binary", default="")
     parser.add_argument("--cpc-sig-dir", default="")
     parser.add_argument("wrapper", nargs="*")
@@ -1047,6 +1080,7 @@ def main():
     cvc5_binary = os.path.abspath(g_args.cvc5_binary)
     lfsc_binary = os.path.abspath(g_args.lfsc_binary)
     carcara_binary = os.path.abspath(g_args.carcara_binary)
+    isabelle_binary = os.path.abspath(g_args.isabelle_binary)
     ethos_binary = os.path.abspath(g_args.ethos_binary)
 
     wrapper = g_args.wrapper
@@ -1083,6 +1117,7 @@ def main():
         lfsc_binary,
         lfsc_sigs,
         carcara_binary,
+        isabelle_binary,
         ethos_binary,
         g_args.benchmark,
         timeout,

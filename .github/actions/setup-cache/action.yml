@@ -7,6 +7,8 @@ inputs:
     default: false
   install-carcara:
     default: false
+  install-isabelle:
+    default: false 
   shell:
     default: bash
 
@@ -69,6 +71,10 @@ runs:
         if [ "${{ inputs.install-carcara }}" = "true" ]; then
           ./contrib/get-carcara-checker
         fi
+        if [ "${{ inputs.install-isabelle }}" = "true" ]; then
+          ./contrib/get-isabelle-checker
+        fi
+        i
         if [ "${{ inputs.install-ethos }}" = "true" ]; then
           ./contrib/get-ethos-checker
         fi

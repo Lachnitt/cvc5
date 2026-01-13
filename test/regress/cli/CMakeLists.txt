@@ -4418,6 +4418,7 @@ macro(cvc5_add_regression_test regress_set level file)
     --lfsc-binary ${CMAKE_SOURCE_DIR}/deps/bin/lfscc
     --lfsc-sig-dir ${CMAKE_SOURCE_DIR}/proofs/lfsc/signatures
     --carcara-binary ${CMAKE_SOURCE_DIR}/deps/bin/carcara
+    --isabelle-binary ${CMAKE_SOURCE_DIR}/deps/bin/isabelle
     --ethos-binary ${CMAKE_SOURCE_DIR}/deps/bin/ethos
     --cpc-sig-dir ${CMAKE_SOURCE_DIR}/proofs/eo
     ${wrapper}
@@ -4449,9 +4450,8 @@ endforeach()
 foreach(file ${regress_4_tests})
   cvc5_add_regression_test(regress 4 ${file})
 endforeach()
-message("before")
+
 #Isabelle should only be run for a selected number of files
 foreach(file ${isabelle_regress_0_tests})
-  message("here")
   cvc5_add_regression_test(isabelle_regress 0 ${file})
 endforeach()
