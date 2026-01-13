@@ -4160,6 +4160,15 @@ set(regress_4_tests
 )
 
 #-----------------------------------------------------------------------------#
+# Regression level 0 tests used for Isabelle/HOL testing
+
+set(isabelle_regress_0_tests
+  regress0/arith/ite-lift.smt2
+  regress0/arith/leq.01.smtv1.smt2
+)
+
+
+#-----------------------------------------------------------------------------#
 # Disabled tests, will not be run.
 
 set(regression_disabled_tests
@@ -4368,6 +4377,14 @@ foreach(tester ${testers})
     DEPENDS build-regress)
 endforeach()
 
+# The Isabelle tester has to be added separately since it is only run on some of the files.
+# This is here so that make regress-isabelle runs
+add_custom_target(regress-isabelle
+  COMMAND ${CMAKE_COMMAND} -E env RUN_REGRESSION_ARGS='--tester isabelle'
+    ctest --output-on-failure -L "isabelle_regress[0]" -j${CTEST_NTHREADS} $$ARGS
+  DEPENDS build-regress)
+
+
 # We must ensure that the cvc5 binary is built before running any tests.
 # In principle, this would just be a matter of adding a dependency on the
 # 'test' target (defined by CTest). However, that built-in targets are not
@@ -4385,7 +4402,7 @@ endforeach()
 # add_test(build_regress_test "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}" --config "$<CONFIG>" --target build-regress)
 # set_tests_properties(build_regress_test PROPERTIES FIXTURES_SETUP build_regress_fixture)
 
-macro(cvc5_add_regression_test level file)
+macro(cvc5_add_regression_test regress_set level file)
   set(wrapper )
   if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # Make wineserver persistent for 60 seconds (this is for better
@@ -4406,7 +4423,7 @@ macro(cvc5_add_regression_test level file)
     ${wrapper}
     ${path_to_cvc5}/cvc5${CMAKE_EXECUTABLE_SUFFIX}
     ${CMAKE_CURRENT_LIST_DIR}/${file})
-  set_tests_properties(${file} PROPERTIES LABELS "regress${level}")
+  set_tests_properties(${file} PROPERTIES LABELS "${regress_set}${level}")
   set_tests_properties(${file} PROPERTIES SKIP_RETURN_CODE 77)
   # set_tests_properties(${file} PROPERTIES FIXTURES_REQUIRED build_regress_fixture)
 endmacro()
@@ -4414,21 +4431,27 @@ endmacro()
 set(RUN_REGRESSION_ARGS ${RUN_REGRESSION_ARGS} --use-skip-return-code)
 
 foreach(file ${regress_0_tests})
-  cvc5_add_regression_test(0 ${file})
+  cvc5_add_regression_test(regress 0 ${file})
 endforeach()
 
 foreach(file ${regress_1_tests})
-  cvc5_add_regression_test(1 ${file})
+  cvc5_add_regression_test(regress 1 ${file})
 endforeach()
 
 foreach(file ${regress_2_tests})
-  cvc5_add_regression_test(2 ${file})
+  cvc5_add_regression_test(regress 2 ${file})
 endforeach()
 
 foreach(file ${regress_3_tests})
-  cvc5_add_regression_test(3 ${file})
+  cvc5_add_regression_test(regress 3 ${file})
 endforeach()
 
 foreach(file ${regress_4_tests})
-  cvc5_add_regression_test(4 ${file})
+  cvc5_add_regression_test(regress 4 ${file})
+endforeach()
+message("before")
+#Isabelle should only be run for a selected number of files
+foreach(file ${isabelle_regress_0_tests})
+  message("here")
+  cvc5_add_regression_test(isabelle_regress 0 ${file})
 endforeach()

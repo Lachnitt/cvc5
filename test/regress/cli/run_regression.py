@@ -346,6 +346,55 @@ class AletheTester(Tester):
             print_ok("OK")
         return exit_code
 
+class IsabelleTester(Tester):
+    def __init__(self):
+        super().__init__("isabelle")
+
+    def applies(self, benchmark_info):
+        return (
+            benchmark_info.benchmark_ext != ".sy"
+            and benchmark_info.expected_output.strip() == "unsat"
+        )
+
+    def run_internal(self, benchmark_info):
+        exit_code = EXIT_OK
+        # alethe is not supported in safe mode
+        if benchmark_info.safe_mode:
+            return EXIT_SKIP
+        with tempfile.NamedTemporaryFile(suffix=".smt2.proof") as tmpf:
+            cvc5_args = benchmark_info.command_line_args + [
+                "--dump-proofs",
+                "--proof-format=alethe"
+            ]
+            # remove duplicates
+            cvc5_args = list(dict.fromkeys(cvc5_args))
+            output, error, exit_status = run_process(
+                [benchmark_info.cvc5_binary]
+                + cvc5_args
+                + [benchmark_info.benchmark_basename],
+                benchmark_info.benchmark_dir,
+                benchmark_info.timeout,
+            )
+            if (re.search(r'Proof unsupported by Alethe', output.decode()) or re.search(r'Proof unsupported by Alethe', error.decode())):
+                return EXIT_SKIP 
+            # strip the unsat and parentheses
+            output, exit_code = self.strip_proof_body(output)
+            if exit_code == EXIT_FAILURE:
+                return EXIT_FAILURE
+            tmpf.write(output)
+            tmpf.flush()
+            output, error = output.decode(), error.decode()
+            exit_code = self.check_exit_status(EXIT_OK, exit_status, output,
+                                               error, cvc5_args)
+
+            if exit_code != EXIT_OK:
+                return exit_code
+            original_file = benchmark_info.benchmark_dir + '/' + benchmark_info.benchmark_basename
+        if exit_code == EXIT_OK:
+            print_ok("OK")
+        return exit_code
+
+
 class CpcTester(Tester):
 
     def __init__(self):
@@ -545,7 +594,8 @@ g_testers = {
     "abduct": AbductTester(),
     "dump": DumpTester(),
     "alethe": AletheTester(),
-    "cpc": CpcTester()
+    "cpc": CpcTester(),
+    "isabelle": IsabelleTester(),
 }
 
 g_default_testers = [
@@ -859,6 +909,8 @@ def run_regression(
                     testers.remove("lfsc")
                 if "alethe" in testers:
                     testers.remove("alethe")
+                if "isabelle" in testers:
+                    testers.remove("isabelle")
                 if "cpc" in testers:
                     testers.remove("cpc")
 
