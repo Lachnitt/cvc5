@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Yoni Zohar, Liana Hadarean, Aina Niemetz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -54,11 +51,11 @@ PreprocessingPassResult BVToBool::applyInternal(
   {
     assertionsToPreprocess->replace(
         i, new_assertions[i], nullptr, TrustId::PREPROCESS_BV_TO_BOOL);
-    assertionsToPreprocess->ensureRewritten(i);
     if (assertionsToPreprocess->isInConflict())
     {
       return PreprocessingPassResult::CONFLICT;
     }
+    assertionsToPreprocess->ensureRewritten(i);
   }
   return PreprocessingPassResult::NO_CONFLICT;
 }
@@ -195,7 +192,6 @@ Node BVToBool::convertBvTerm(TNode node)
   // while BITVECTOR_XOR can be n-ary
   if (kind == Kind::BITVECTOR_XOR)
   {
-    new_kind = Kind::XOR;
     Node result = convertBvTerm(node[0]);
     for (unsigned i = 1; i < node.getNumChildren(); ++i)
     {

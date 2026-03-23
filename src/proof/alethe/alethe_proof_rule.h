@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Hanna Lachnitt, Haniel Barbosa
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -85,6 +82,13 @@ enum class AletheRule : uint32_t
   // ======== not_not
   // > i.  (cl (not(not(not F)))  F)
   NOT_NOT,
+  // ======== and_intro
+  // G > i1. F1
+  // ...
+  // G > in. Fn
+  // ...
+  // G > k. (and F1 ... Fn)
+  AND_INTRO,
   // ======== and_pos
   // > i.  (cl (not(and F1 ... Fn))  Fi)
   // , with 1 <= i <= n
@@ -397,6 +401,11 @@ enum class AletheRule : uint32_t
   NARY_ELIM,
   QNT_SIMPLIFY,
   ALL_SIMPLIFY,
+  // Simplifications based on AC, identity, duplicates
+  ACI_SIMP,
+  EVALUATE,
+  POLY_SIMP,
+  POLY_SIMP_REL,
   RARE_REWRITE,
   // ======== let
   // G,x1->F1,...,xn->Fn > j. (= G G')
@@ -455,6 +464,11 @@ enum class AletheRule : uint32_t
   // where set representation of F1 and F2 are the same and the number of
   // literals in C2 is the same of that of C1.
   REORDERING,
+  // ======== HO
+  // > i. (= ((lambda (x_1   ... x_n) t) t_1 ... t_k)
+  //         (lambda (x_k+1 ... x_n) t){x_1 -> t1, ..., x_k -> t_k})
+  // where if k = n then the rhs has no lambda binding t.
+  BETA_EQUIVALENCE,
   // ======== bitvector
   //  > i. (cl (= t bbt(t)))
   BV_BITBLAST_STEP_VAR,

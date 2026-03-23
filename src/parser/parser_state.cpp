@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Aina Niemetz, Morgan Deters
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -21,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
 
@@ -613,7 +611,7 @@ bool ParserState::isDeclared(const std::string& name, SymbolType type)
     case SYM_SORT: return d_symtab->isBoundType(name);
     case SYM_VERBATIM: Unreachable();
   }
-  Assert(false);  // Unhandled(type);
+  DebugUnhandled();  // Unhandled(type);
   return false;
 }
 
@@ -649,7 +647,7 @@ void ParserState::checkDeclaration(const std::string& varName,
 
     case CHECK_NONE: break;
 
-    default: Assert(false);  // Unhandled(check);
+    default: DebugUnhandled();  // Unhandled(check);
   }
 }
 
@@ -723,7 +721,7 @@ void ParserState::pushGetValueScope()
       }
       else
       {
-        Assert(false)
+        DebugUnhandled()
             << "model domain element is not an uninterpreted sort value: " << e;
       }
     }
@@ -757,12 +755,54 @@ Term ParserState::mkCharConstant(const std::string& s)
   return d_tm.mkString(std::u32string(1, val));
 }
 
-uint32_t stringToUnsigned(const std::string& str)
+bool stringToUnsigned(const std::string& str,
+                      uint32_t& result,
+                      std::ostream* os)
 {
-  uint32_t result;
-  std::stringstream ss;
-  ss << str;
-  ss >> result;
+  if (str.empty() || str.find_first_not_of("0123456789") != std::string::npos)
+  {
+    if (os != nullptr)
+    {
+      (*os) << " String is not a numeral.";
+    }
+    return false;
+  }
+  size_t pos = 0;
+  unsigned long long parsed = 0;
+  try
+  {
+    parsed = std::stoull(str, &pos);
+  }
+  catch (const std::exception&)
+  {
+    if (os != nullptr)
+    {
+      (*os) << " Exception encountered in std::stoull.";
+    }
+    return false;
+  }
+  if (pos != str.size() || parsed > std::numeric_limits<uint32_t>::max())
+  {
+    if (os != nullptr)
+    {
+      (*os) << " Numerals must fit into 32-bit unsigned integers.";
+    }
+    return false;
+  }
+  result = static_cast<uint32_t>(parsed);
+  return true;
+}
+
+uint32_t ParserState::parseStringToUnsigned(const std::string& str)
+{
+  uint32_t result = 0;
+  if (!stringToUnsigned(str, result))
+  {
+    std::stringstream ss;
+    ss << "Failed to parse numeral.";
+    stringToUnsigned(str, result, &ss);
+    parseError(ss.str());
+  }
   return result;
 }
 

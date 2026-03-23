@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Mathias Preiner, Tim King, Aina Niemetz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -126,6 +123,16 @@ class OstreamVoider
 #else
 #define Assert(cond) \
   CVC5_FATAL_IF(false, __PRETTY_FUNCTION__, __FILE__, __LINE__)
+#endif
+
+// DebugUnhandled() triggers an assertion failure (when CVC5_ASSERTIONS is
+// enabled) to flag potential unhandled code paths. When running under
+// the Clang Static Analyzer, it becomes a no-op so the analyzer can continue
+// exploring the production control flow.
+#if defined(__clang_analyzer__)
+#define DebugUnhandled() Assert(true)
+#else
+#define DebugUnhandled() Assert(false)
 #endif
 
 class AssertArgumentException : public Exception

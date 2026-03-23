@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Martin Brain, Aina Niemetz, Daniel Larraz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -196,12 +193,6 @@ symbolicProposition::symbolicProposition(bool v)
   Assert(checkNodeType(*this));
 }
 
-symbolicProposition::symbolicProposition(const symbolicProposition& old)
-    : nodeWrapper(old)
-{
-  Assert(checkNodeType(*this));
-}
-
 symbolicProposition symbolicProposition::operator!(void) const
 {
   return symbolicProposition(NodeManager::mkNode(Kind::BITVECTOR_NOT, *this));
@@ -250,12 +241,6 @@ symbolicRoundingMode::symbolicRoundingMode(const unsigned v)
         SymFpuNM::get()->mkConst(BitVector(SYMFPU_NUMBER_OF_ROUNDING_MODES, v)))
 {
   Assert((v & (v - 1)) == 0 && v != 0);  // Exactly one bit set
-  Assert(checkNodeType(*this));
-}
-
-symbolicRoundingMode::symbolicRoundingMode(const symbolicRoundingMode& old)
-    : nodeWrapper(old)
-{
   Assert(checkNodeType(*this));
 }
 
@@ -340,13 +325,6 @@ template <bool isSigned>
 symbolicBitVector<isSigned>::symbolicBitVector(const symbolicProposition& p)
     : nodeWrapper(fromProposition(p))
 {
-}
-template <bool isSigned>
-symbolicBitVector<isSigned>::symbolicBitVector(
-    const symbolicBitVector<isSigned>& old)
-    : nodeWrapper(old)
-{
-  Assert(checkNodeType(*this));
 }
 template <bool isSigned>
 symbolicBitVector<isSigned>::symbolicBitVector(const BitVector& old)

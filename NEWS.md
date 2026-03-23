@@ -1,11 +1,30 @@
 This file contains a summary of important user-visible changes.
 
-cvc5 1.3.3 prerelease
+cvc5 1.3.4 prerelease
 =====================
 
 ## Changes
 
+- Fixes parsing issues related to unchecked overflowing of indexed
+  bit-vector operators. This impacts bit-vector operators having width
+  that is greater than or equal to `2^32`.
+- Fixes a soundness bug in the `--learned-rewrite` preprocessing pass.
+- We now allow using option `--solve-bv-as-int` with quantifiers, even if the
+  quantified variables occur under UFs.
+
+
+cvc5 1.3.3
+==========
+
+## Changes
+
+- Fixes a bug with `get-assertions` which cleared the previous solving state.
 - We now use a lazy approach for handling `distinct` constraints.
+- Minor improvement to the strategy used for non-linear arithmetic when both
+  incremental linearization and cylindrical algebraic coverings are used in
+  combination.
+- Fixes the SyGuS solver for corner cases of unconstrained queries.
+
 
 cvc5 1.3.2
 ==========

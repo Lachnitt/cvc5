@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Mudathir Mohamed, Aina Niemetz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -183,7 +180,7 @@ RewriteResponse TheorySetsRewriter::postRewrite(TNode node) {
 
     case Kind::SET_SUBSET:
     {
-      Assert(false)
+      DebugUnhandled()
           << "TheorySets::postRrewrite(): Subset is handled in preRewrite.";
 
       // but in off-chance we do end up here, let us do our best
@@ -1038,11 +1035,13 @@ RewriteResponse TheorySetsRewriter::postRewriteFold(TNode n)
     }
     case Kind::SET_UNION:
     {
-      // (set.fold f t (set.union B C)) = (set.fold f (set.fold f t A) B))
+      // (set.fold f t (set.union A B)) =
+      // (set.fold f (set.fold f t A) (set.minus B A)))
       Node A = n[2][0];
       Node B = n[2][1];
       Node foldA = nm->mkNode(Kind::SET_FOLD, f, t, A);
-      Node fold = nm->mkNode(Kind::SET_FOLD, f, foldA, B);
+      Node fold = nm->mkNode(
+          Kind::SET_FOLD, f, foldA, nm->mkNode(Kind::SET_MINUS, B, A));
       return RewriteResponse(REWRITE_AGAIN_FULL, fold);
     }
 
