@@ -26,6 +26,11 @@ ISABELLE_DIR="$BASE_DIR/isabelle"
 mkdir -p $ISABELLE_DIR
 
 # download and unpack Isabelle
-ISABELLE_VERSION="fb1ce1163e7b8351c6bbfa8363c64a634044b3fd"
-download "https://github.com/m-fleury/isabelle-emacs/tree/$ISABELLE_VERSION" $BASE_DIR/tmp/
+download "https://github.com/cvc5/isabelle-integration-evaluation/blob/main/Binaries/Isabelle.tar.gz" $BASE_DIR/tmp/isabelle.tgz
+tar --strip 1 -xzf $BASE_DIR/tmp/isabelle.tgz -C $ISABELLE_DIR
+rm $BASE_DIR/tmp/isabelle.tgz
 
+# build Isabelle
+mkdir $ISABELLE_DIR/.isabelle
+export USER_HOME=$ISABELLE_DIR/.isabelle
+$ISABELLE_DIR/Isabelle/bin/isabelle build Main
