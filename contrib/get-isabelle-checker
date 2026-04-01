@@ -1,4 +1,4 @@
-!/usr/bin/env bash
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
@@ -24,13 +24,19 @@ mkdir -p $BASE_DIR/tmp/
 ##### Isabelle
 ISABELLE_DIR="$BASE_DIR/isabelle"
 mkdir -p $ISABELLE_DIR
+ISABELLE_SETTINGS_DIR="$BASE_DIR/.isabelle"
+mkdir -p $ISABELLE_SETTINGS_DIR
 
 # download and unpack Isabelle
-download "https://github.com/cvc5/isabelle-integration-evaluation/blob/main/Binaries/Isabelle.tar.gz" $BASE_DIR/tmp/isabelle.tgz
-tar --strip 1 -xzf $BASE_DIR/tmp/isabelle.tgz -C $ISABELLE_DIR
-rm $BASE_DIR/tmp/isabelle.tgz
+download "https://github.com/cvc5/isabelle-integration-evaluation/releases/download/IsabelleBinary/Isabelle.tar.gz" $BASE_DIR/tmp/Isabelle.tar.gz
+tar --strip 1 -xvf $BASE_DIR/tmp/Isabelle.tar.gz -C $ISABELLE_DIR
+rm $BASE_DIR/tmp/Isabelle.tar.gz
 
 # build Isabelle
-mkdir $ISABELLE_DIR/.isabelle
-export USER_HOME=$ISABELLE_DIR/.isabelle
-$ISABELLE_DIR/Isabelle/bin/isabelle build Main
+export USER_HOME="$BASE_DIR/"
+export ISABELLE_HOME="$ISABELLE_DIR"
+#Not sure if this one is needed
+export ISABELLE_HOME_USER="$ISABELLE_DIR"
+
+$ISABELLE_DIR/bin/isabelle components -a
+$ISABELLE_DIR/bin/isabelle build Main
