@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Paul Meng, Mudathir Mohamed
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -1144,7 +1141,7 @@ void TheorySetsRels::check(Theory::Effort level)
         break;
       }
       default:
-        Assert(false) << "No implementation for up rules for kind " << k
+        DebugUnhandled() << "No implementation for up rules for kind " << k
                       << std::endl;
     }
   }
@@ -1421,7 +1418,7 @@ void TheorySetsRels::check(Theory::Effort level)
 
   bool TheorySetsRels::hasTerm(Node a) { return d_state.hasTerm(a); }
   bool TheorySetsRels::areEqual( Node a, Node b ){
-    Assert(a.getType() == b.getType());
+    AssertEqual(a.getType(), b.getType());
     Trace("rels-eq") << "[sets-rels]**** checking equality between " << a << " and " << b << std::endl;
     if(a == b) {
       return true;

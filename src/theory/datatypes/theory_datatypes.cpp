@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Aina Niemetz, Morgan Deters
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -79,7 +76,7 @@ TheoryDatatypes::~TheoryDatatypes() {
   for(std::map< Node, EqcInfo* >::iterator i = d_eqc_info.begin(), iend = d_eqc_info.end();
       i != iend; ++i){
     EqcInfo* current = (*i).second;
-    Assert(current != NULL);
+    Assert(current != nullptr);
     delete current;
   }
 }
@@ -122,6 +119,8 @@ void TheoryDatatypes::finishInit()
   // testers are not relevant for model building
   d_valuation.setIrrelevantKind(Kind::APPLY_TESTER);
   d_valuation.setIrrelevantKind(Kind::DT_SYGUS_BOUND);
+  // evaluation functions are not relevant to model construction.
+  d_valuation.setIrrelevantKind(Kind::DT_SYGUS_EVAL);
   // selectors don't always evaluate
   d_valuation.setSemiEvaluatedKind(Kind::APPLY_SELECTOR);
 }
@@ -150,7 +149,7 @@ TheoryDatatypes::EqcInfo* TheoryDatatypes::getOrMakeEqcInfo( TNode n, bool doMak
 
       return ei;
     }else{
-      return NULL;
+      return nullptr;
     }
   }else{
     std::map< Node, EqcInfo* >::iterator eqc_i = d_eqc_info.find( n );

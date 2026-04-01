@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Martin Brain, Aina Niemetz, Daniel Larraz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -136,8 +133,8 @@ stickyRightShiftResult<traits> stickyRightShift(const traits::ubv& input,
 }
 
 template <>
-void probabilityAnnotation<traits, traits::prop>(const traits::prop& p,
-                                                 const probability& pr)
+void probabilityAnnotation<traits, traits::prop>(
+    CVC5_UNUSED const traits::prop& p, CVC5_UNUSED const probability& pr)
 {
   // For now, do nothing...
   return;
@@ -155,25 +152,25 @@ symbolicRoundingMode traits::RTP(void) { return symbolicRoundingMode(0x04); };
 symbolicRoundingMode traits::RTN(void) { return symbolicRoundingMode(0x08); };
 symbolicRoundingMode traits::RTZ(void) { return symbolicRoundingMode(0x10); };
 
-void traits::precondition(const bool b)
+void traits::precondition(CVC5_UNUSED const bool b)
 {
   Assert(b);
   return;
 }
-void traits::postcondition(const bool b)
+void traits::postcondition(CVC5_UNUSED const bool b)
 {
   Assert(b);
   return;
 }
-void traits::invariant(const bool b)
+void traits::invariant(CVC5_UNUSED const bool b)
 {
   Assert(b);
   return;
 }
 
-void traits::precondition(const prop& p) { return; }
-void traits::postcondition(const prop& p) { return; }
-void traits::invariant(const prop& p) { return; }
+void traits::precondition(CVC5_UNUSED const prop& p) { return; }
+void traits::postcondition(CVC5_UNUSED const prop& p) { return; }
+void traits::invariant(CVC5_UNUSED const prop& p) { return; }
 // This allows us to use the symfpu literal / symbolic assertions in the
 // symbolic back-end
 typedef traits t;
@@ -192,12 +189,6 @@ symbolicProposition::symbolicProposition(const Node n) : nodeWrapper(n)
 }  // Only used within this header so could be friend'd
 symbolicProposition::symbolicProposition(bool v)
     : nodeWrapper(SymFpuNM::get()->mkConst(BitVector(1U, (v ? 1U : 0U))))
-{
-  Assert(checkNodeType(*this));
-}
-
-symbolicProposition::symbolicProposition(const symbolicProposition& old)
-    : nodeWrapper(old)
 {
   Assert(checkNodeType(*this));
 }
@@ -250,12 +241,6 @@ symbolicRoundingMode::symbolicRoundingMode(const unsigned v)
         SymFpuNM::get()->mkConst(BitVector(SYMFPU_NUMBER_OF_ROUNDING_MODES, v)))
 {
   Assert((v & (v - 1)) == 0 && v != 0);  // Exactly one bit set
-  Assert(checkNodeType(*this));
-}
-
-symbolicRoundingMode::symbolicRoundingMode(const symbolicRoundingMode& old)
-    : nodeWrapper(old)
-{
   Assert(checkNodeType(*this));
 }
 
@@ -340,13 +325,6 @@ template <bool isSigned>
 symbolicBitVector<isSigned>::symbolicBitVector(const symbolicProposition& p)
     : nodeWrapper(fromProposition(p))
 {
-}
-template <bool isSigned>
-symbolicBitVector<isSigned>::symbolicBitVector(
-    const symbolicBitVector<isSigned>& old)
-    : nodeWrapper(old)
-{
-  Assert(checkNodeType(*this));
 }
 template <bool isSigned>
 symbolicBitVector<isSigned>::symbolicBitVector(const BitVector& old)
@@ -688,8 +666,9 @@ template <bool isSigned>
 symbolicBitVector<isSigned> symbolicBitVector<isSigned>::matchWidth(
     const symbolicBitVector<isSigned>& op) const
 {
-  Assert(this->getWidth() <= op.getWidth());
-  return this->extend(op.getWidth() - this->getWidth());
+  auto width = this->getWidth();  // Ensure deterministic node id assignment
+  Assert(width <= op.getWidth());
+  return this->extend(op.getWidth() - width);
 }
 
 template <bool isSigned>
@@ -1284,7 +1263,7 @@ Node FpWordBlaster::wordBlast(TNode node)
   return node;
 }
 
-Node FpWordBlaster::getValue(Valuation& val, TNode var)
+Node FpWordBlaster::getValue(TNode var)
 {
   Assert(var.getKind() == Kind::FLOATINGPOINT_TO_FP_FROM_SBV
          || var.getKind() == Kind::FLOATINGPOINT_TO_FP_FROM_UBV

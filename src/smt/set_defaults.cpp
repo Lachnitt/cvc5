@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Gereon Kremer, Haniel Barbosa
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -596,7 +593,7 @@ void SetDefaults::finalizeLogic(LogicInfo& logic, Options& opts) const
   if (d_env.hasSepHeap())
   {
     std::stringstream reasonNoSepLogic;
-    if (incompatibleWithSeparationLogic(opts, reasonNoSepLogic))
+    if (incompatibleWithSeparationLogic(opts))
     {
       std::stringstream ss;
       ss << reasonNoSepLogic.str()
@@ -1416,8 +1413,7 @@ bool SetDefaults::incompatibleWithQuantifiers(const Options& opts,
   return false;
 }
 
-bool SetDefaults::incompatibleWithSeparationLogic(Options& opts,
-                                                  std::ostream& reason) const
+bool SetDefaults::incompatibleWithSeparationLogic(Options& opts) const
 {
   // Spatial formulas in separation logic have a semantics that depends on
   // their position in the AST (e.g. their nesting beneath separation
@@ -1544,6 +1540,11 @@ void SetDefaults::setDefaultsQuantifiers(const LogicInfo& logic,
   if (opts.quantifiers.instMaxLevel != -1)
   {
     SET_AND_NOTIFY(quantifiers, cegqi, false, "instMaxLevel");
+  }
+  if (opts.quantifiers.mbqiEnumChoiceGrammar)
+  {
+    SET_AND_NOTIFY_IF_NOT_USER(
+        quantifiers, mbqiEnum, true, "mbqiEnumChoiceGrammar");
   }
   // enable MBQI if --mbqi-enum is provided
   if (opts.quantifiers.mbqiEnum)

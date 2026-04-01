@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Morgan Deters, Dejan Jovanovic, Aina Niemetz
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -564,7 +561,7 @@ public:
    * If this is a CONST_* Node, extract the constant from it.
    */
   template <class T>
-  inline const T& getConst() const;
+  CVC5_NO_DANGLING inline const T& getConst() const;
 
   /**
    * @return true if this is a skolem function.
@@ -680,11 +677,6 @@ public:
     kinded_iterator() :
       d_node(NodeTemplate<ref_count>::null()),
       d_child(-2) {
-    }
-
-    kinded_iterator(const kinded_iterator& i) :
-      d_node(i.d_node),
-      d_child(i.d_child) {
     }
 
     NodeTemplate<ref_count> operator*() {
@@ -1056,7 +1048,7 @@ NodeTemplate<ref_count> NodeTemplate<ref_count>::s_null(&expr::NodeValue::null()
 template <bool ref_count>
 NodeTemplate<ref_count>::NodeTemplate(const expr::NodeValue* ev) :
   d_nv(const_cast<expr::NodeValue*> (ev)) {
-  Assert(d_nv != NULL) << "Expecting a non-NULL expression value!";
+  Assert(d_nv != nullptr) << "Expecting a non-NULL expression value!";
   if(ref_count) {
     d_nv->inc();
   } else {
@@ -1071,7 +1063,7 @@ NodeTemplate<ref_count>::NodeTemplate(const expr::NodeValue* ev) :
 
 template <bool ref_count>
 NodeTemplate<ref_count>::NodeTemplate(const NodeTemplate<!ref_count>& e) {
-  Assert(e.d_nv != NULL) << "Expecting a non-NULL expression value!";
+  Assert(e.d_nv != nullptr) << "Expecting a non-NULL expression value!";
   d_nv = e.d_nv;
   if(ref_count) {
     Assert(d_nv->d_rc > 0) << "Node constructed from TNode with rc == 0";
@@ -1084,7 +1076,7 @@ NodeTemplate<ref_count>::NodeTemplate(const NodeTemplate<!ref_count>& e) {
 
 template <bool ref_count>
 NodeTemplate<ref_count>::NodeTemplate(const NodeTemplate& e) {
-  Assert(e.d_nv != NULL) << "Expecting a non-NULL expression value!";
+  Assert(e.d_nv != nullptr) << "Expecting a non-NULL expression value!";
   d_nv = e.d_nv;
   if(ref_count) {
     // shouldn't ever fail
@@ -1097,7 +1089,7 @@ NodeTemplate<ref_count>::NodeTemplate(const NodeTemplate& e) {
 
 template <bool ref_count>
 NodeTemplate<ref_count>::~NodeTemplate() {
-  Assert(d_nv != NULL) << "Expecting a non-NULL expression value!";
+  Assert(d_nv != nullptr) << "Expecting a non-NULL expression value!";
   if(ref_count) {
     // shouldn't ever fail
     Assert(d_nv->d_rc > 0) << "Node reference count would be negative";
@@ -1118,8 +1110,8 @@ void NodeTemplate<ref_count>::assignNodeValue(expr::NodeValue* ev) {
 template <bool ref_count>
 NodeTemplate<ref_count>& NodeTemplate<ref_count>::
 operator=(const NodeTemplate& e) {
-  Assert(d_nv != NULL) << "Expecting a non-NULL expression value!";
-  Assert(e.d_nv != NULL) << "Expecting a non-NULL expression value on RHS!";
+  Assert(d_nv != nullptr) << "Expecting a non-NULL expression value!";
+  Assert(e.d_nv != nullptr) << "Expecting a non-NULL expression value on RHS!";
   if(__builtin_expect( ( d_nv != e.d_nv ), true )) {
     if(ref_count) {
       // shouldn't ever fail
@@ -1141,8 +1133,8 @@ operator=(const NodeTemplate& e) {
 template <bool ref_count>
 NodeTemplate<ref_count>& NodeTemplate<ref_count>::
 operator=(const NodeTemplate<!ref_count>& e) {
-  Assert(d_nv != NULL) << "Expecting a non-NULL expression value!";
-  Assert(e.d_nv != NULL) << "Expecting a non-NULL expression value on RHS!";
+  Assert(d_nv != nullptr) << "Expecting a non-NULL expression value!";
+  Assert(e.d_nv != nullptr) << "Expecting a non-NULL expression value on RHS!";
   if(__builtin_expect( ( d_nv != e.d_nv ), true )) {
     if(ref_count) {
       // shouldn't ever fail

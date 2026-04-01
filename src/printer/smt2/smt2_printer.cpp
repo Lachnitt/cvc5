@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Aina Niemetz, Abdalrhman Mohamed
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -67,10 +64,7 @@ namespace cvc5::internal {
 namespace printer {
 namespace smt2 {
 
-static void toStreamRational(std::ostream& out,
-                             const Rational& r,
-                             bool isReal,
-                             Variant v)
+static void toStreamRational(std::ostream& out, const Rational& r, bool isReal)
 {
   bool neg = r.sgn() < 0;
   bool arithTokens = options::ioutils::getPrintArithLitToken(out);
@@ -320,13 +314,13 @@ bool Smt2Printer::toStreamBase(std::ostream& out,
     case Kind::CONST_RATIONAL:
     {
       const Rational& r = n.getConst<Rational>();
-      toStreamRational(out, r, true, d_variant);
+      toStreamRational(out, r, true);
       break;
     }
     case Kind::CONST_INTEGER:
     {
       const Rational& r = n.getConst<Rational>();
-      toStreamRational(out, r, false, d_variant);
+      toStreamRational(out, r, false);
       break;
     }
 
@@ -1629,7 +1623,7 @@ void Smt2Printer::toStreamModelSort(std::ostream& out,
       }
       else
       {
-        Assert(false)
+        DebugUnhandled()
             << "model domain element is not an uninterpreted sort value: "
             << trn;
         out << trn;
@@ -1759,7 +1753,7 @@ void Smt2Printer::toStreamCmdDeclareFunction(
     const std::vector<TypeNode>& argTypes,
     TypeNode type) const
 {
-  if (d_variant == Variant::alf_variant)
+  if (d_variant == Variant::eo_variant)
   {
     out << "(declare-const " << cvc5::internal::quoteSymbol(id);
     if (!argTypes.empty())
@@ -1818,7 +1812,7 @@ void Smt2Printer::toStreamCmdDefineFunction(std::ostream& out,
                                             TypeNode range,
                                             Node formula) const
 {
-  if (d_variant == Variant::alf_variant)
+  if (d_variant == Variant::eo_variant)
   {
     out << "(define " << cvc5::internal::quoteSymbol(id) << " ";
     toStreamSortedVarList(out, formals);
@@ -1912,24 +1906,7 @@ void Smt2Printer::toStreamCmdDeclareType(std::ostream& out,
                                          const std::string& id,
                                          size_t arity) const
 {
-  if (d_variant == Variant::alf_variant)
-  {
-    out << "(declare-const " << cvc5::internal::quoteSymbol(id) << " ";
-    if (arity > 0)
-    {
-      out << "(->";
-      for (size_t i = 0; i < arity; i++)
-      {
-        out << " Type";
-      }
-      out << " Type))";
-    }
-    else
-    {
-      out << "Type)";
-    }
-    return;
-  }
+
   out << "(declare-sort " << cvc5::internal::quoteSymbol(id) << " " << arity
       << ")";
 }
@@ -2150,7 +2127,7 @@ void Smt2Printer::toStreamCmdDatatypeDeclaration(
   out << "(declare-";
   // Ethos does not support codatatypes, we just print as an ordinary
   // datatype for now
-  if (d0.isCodatatype() && d_variant != Variant::alf_variant)
+  if (d0.isCodatatype() && d_variant != Variant::eo_variant)
   {
     out << "co";
   }
@@ -2234,8 +2211,8 @@ void Smt2Printer::toStreamSkolem(std::ostream& out,
   }
 }
 
-void Smt2Printer::toStreamCmdEmpty(std::ostream& out,
-                                   const std::string& name) const
+void Smt2Printer::toStreamCmdEmpty(CVC5_UNUSED std::ostream& out,
+                                   CVC5_UNUSED const std::string& name) const
 {
 }
 

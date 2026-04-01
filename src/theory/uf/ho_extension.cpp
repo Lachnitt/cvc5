@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Aina Niemetz, Gereon Kremer
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -250,7 +247,7 @@ Node HoExtension::getApplyUfForHoApply(Node node)
         {
           new_f = nm->mkNode(Kind::HO_APPLY, new_f, v);
         }
-        Assert(new_f.getType() == f.getType());
+        AssertEqual(new_f.getType(), f.getType());
         Node eq = new_f.eqNode(f);
         Node seq = eq.substitute(vs.begin(), vs.end(), nvs.begin(), nvs.end());
         lem = nm->mkNode(
@@ -283,7 +280,7 @@ Node HoExtension::getApplyUfForHoApply(Node node)
   Assert(TheoryUfRewriter::canUseAsApplyUfOperator(new_f));
   args[0] = new_f;
   Node ret = nm->mkNode(Kind::APPLY_UF, args);
-  Assert(ret.getType() == node.getType());
+  AssertEqual(ret.getType(), node.getType());
   return ret;
 }
 

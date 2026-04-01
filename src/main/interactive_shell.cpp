@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Morgan Deters, Andrew Reynolds, Christopher L. Conway
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -168,7 +165,7 @@ InteractiveShell::~InteractiveShell() {
 
 bool InteractiveShell::readAndExecCommands()
 {
-  char* lineBuf = NULL;
+  char* lineBuf = nullptr;
   string line = "";
 restart:
 
@@ -243,7 +240,7 @@ restart:
 
     /* If we hit EOF, we're done. */
     if ((!d_usingEditline && d_in.eof())
-        || (d_usingEditline && lineBuf == NULL))
+        || (d_usingEditline && lineBuf == nullptr))
     {
       input += line;
 
@@ -339,7 +336,7 @@ restart:
         return false;
       }
       cmdSeq.emplace_back(std::move(cmdp));
-      if (dynamic_cast<QuitCommand*>(cmd) != NULL)
+      if (dynamic_cast<QuitCommand*>(cmd) != nullptr)
       {
         d_quit = true;
         break;

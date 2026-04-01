@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Aina Niemetz, Andrew Reynolds, Gereon Kremer
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -2637,7 +2634,7 @@ Term Term::substitute(const Term& term, const Term& replacement) const
   CVC5_API_CHECK_NOT_NULL;
   CVC5_API_CHECK_TERM(term);
   CVC5_API_CHECK_TERM(replacement);
-  CVC5_API_CHECK(term.getSort() == replacement.getSort())
+  CVC5_API_CHECK(CVC5_EQUAL(term.getSort(), replacement.getSort()))
       << "expected terms of the same sort in substitute";
   //////// all checks before this line
   return Term(d_tm,
@@ -2853,25 +2850,6 @@ Term::const_iterator::const_iterator(TermManager* tm,
 {
 }
 
-Term::const_iterator::const_iterator(const const_iterator& it)
-    : d_tm(nullptr), d_origNode(nullptr)
-{
-  if (it.d_origNode != nullptr)
-  {
-    d_tm = it.d_tm;
-    d_origNode = it.d_origNode;
-    d_pos = it.d_pos;
-  }
-}
-
-Term::const_iterator& Term::const_iterator::operator=(const const_iterator& it)
-{
-  d_tm = it.d_tm;
-  d_origNode = it.d_origNode;
-  d_pos = it.d_pos;
-  return *this;
-}
-
 bool Term::const_iterator::operator==(const const_iterator& it) const
 {
   if (d_origNode == nullptr || it.d_origNode == nullptr)
@@ -2921,7 +2899,6 @@ Term Term::const_iterator::operator*() const
       Assert(idx > 0);
       --idx;
     }
-    Assert(idx >= 0);
     return Term(d_tm, (*d_origNode)[idx]);
   }
 }
@@ -4357,17 +4334,6 @@ DatatypeConstructor::const_iterator::const_iterator()
 {
 }
 
-DatatypeConstructor::const_iterator&
-DatatypeConstructor::const_iterator::operator=(
-    const DatatypeConstructor::const_iterator& it)
-{
-  d_tm = it.d_tm;
-  d_int_stors = it.d_int_stors;
-  d_stors = it.d_stors;
-  d_idx = it.d_idx;
-  return *this;
-}
-
 const DatatypeSelector& DatatypeConstructor::const_iterator::operator*() const
 {
   return d_stors[d_idx];
@@ -4727,16 +4693,6 @@ Datatype::const_iterator::const_iterator(TermManager* tm,
 Datatype::const_iterator::const_iterator()
     : d_tm(nullptr), d_int_ctors(nullptr), d_idx(0)
 {
-}
-
-Datatype::const_iterator& Datatype::const_iterator::operator=(
-    const Datatype::const_iterator& it)
-{
-  d_tm = it.d_tm;
-  d_int_ctors = it.d_int_ctors;
-  d_ctors = it.d_ctors;
-  d_idx = it.d_idx;
-  return *this;
 }
 
 const DatatypeConstructor& Datatype::const_iterator::operator*() const
@@ -5302,8 +5258,8 @@ Plugin::Plugin(TermManager& tm)
 }
 
 std::vector<Term> Plugin::check() { return {}; }
-void Plugin::notifySatClause(const Term& clause) {}
-void Plugin::notifyTheoryLemma(const Term& lemma) {}
+void Plugin::notifySatClause(CVC5_UNUSED const Term& clause) {}
+void Plugin::notifyTheoryLemma(CVC5_UNUSED const Term& lemma) {}
 
 /* -------------------------------------------------------------------------- */
 /* TermManager                                                                */
@@ -6236,7 +6192,7 @@ Term TermManager::mkInteger(const std::string& s)
   CVC5_API_TRY_CATCH_BEGIN;
   CVC5_API_ARG_CHECK_EXPECTED(isValidInteger(s), s) << "an integer ";
   Term res = mkRealOrIntegerFromStrHelper(s);
-  CVC5_API_ARG_CHECK_EXPECTED(res.getSort() == getIntegerSort(), s)
+  CVC5_API_ARG_CHECK_EXPECTED(CVC5_EQUAL(res.getSort(), getIntegerSort()), s)
       << "a string representing an integer";
   //////// all checks before this line
   return res;
@@ -6249,7 +6205,7 @@ Term TermManager::mkInteger(int64_t val)
   CVC5_API_TRY_CATCH_BEGIN;
   //////// all checks before this line
   Term res = TermManager::mkRationalValHelper(internal::Rational(val), true);
-  Assert(res.getSort() == getIntegerSort());
+  AssertEqual(res.getSort(), getIntegerSort());
   return res;
   ////////
   CVC5_API_TRY_CATCH_END;
@@ -6869,7 +6825,6 @@ Solver::~Solver() {}
 Term Solver::synthFunHelper(const std::string& symbol,
                             const std::vector<Term>& boundVars,
                             const Sort& sort,
-                            bool isInv,
                             Grammar* grammar) const
 {
   // Note: boundVars, sort and grammar are checked in the caller to avoid
@@ -6907,10 +6862,7 @@ Term Solver::synthFunHelper(const std::string& symbol,
   std::vector<internal::Node> bvns = Term::termVectorToNodes(boundVars);
 
   d_slv->declareSynthFun(
-      fun,
-      grammar == nullptr ? funType : *grammar->resolve().d_type,
-      isInv,
-      bvns);
+      fun, grammar == nullptr ? funType : *grammar->resolve().d_type, bvns);
 
   return Term(&d_tm, fun);
 }
@@ -7294,7 +7246,7 @@ Term Solver::simplify(const Term& term, bool applySubs)
   CVC5_API_SOLVER_CHECK_TERM(term);
   //////// all checks before this line
   Term res = Term(&d_tm, d_slv->simplify(*term.d_node, applySubs));
-  Assert(*res.getSort().d_type == *term.getSort().d_type);
+  AssertEqual(*res.getSort().d_type, *term.getSort().d_type);
   return res;
   ////////
   CVC5_API_TRY_CATCH_END;
@@ -7762,7 +7714,7 @@ std::string OptionInfo::toString() const
     }
   };
   std::visit(overloaded{
-                 [&os](const OptionInfo::VoidInfo& vi) { os << " | void"; },
+                 [&os](const OptionInfo::VoidInfo&) { os << " | void"; },
                  [&os](const OptionInfo::ValueInfo<bool>& vi) {
                    os << std::boolalpha << " | bool | " << vi.currentValue
                       << " | default " << vi.defaultValue << std::noboolalpha;
@@ -7834,7 +7786,7 @@ OptionInfo Solver::getOptionInfo(const std::string& option) const
       << "Querying invalid or unknown option " << option;
   return std::visit(
       overloaded{
-          [&info](const internal::options::OptionInfo::VoidInfo& vi) {
+          [&info](const internal::options::OptionInfo::VoidInfo&) {
             auto cat = convertOptionCategory(info.category);
             return OptionInfo{info.name,
                               info.aliases,
@@ -8138,7 +8090,7 @@ Term Solver::getValueHelper(const Term& term) const
   //////// all checks before this line
   internal::Node value = d_slv->getValue(*term.d_node, true);
   Term res = Term(&d_tm, value);
-  Assert(res.getSort() == term.getSort());
+  AssertEqual(res.getSort(), term.getSort());
   return res;
 }
 
@@ -8768,7 +8720,7 @@ Term Solver::synthFun(const std::string& symbol,
       << "cannot call synthFun unless sygus is enabled (use --"
       << internal::options::quantifiers::longName::sygus << ")";
   //////// all checks before this line
-  return synthFunHelper(symbol, boundVars, sort, false, &grammar);
+  return synthFunHelper(symbol, boundVars, sort, &grammar);
   ////////
   CVC5_API_TRY_CATCH_END;
 }
@@ -8778,7 +8730,7 @@ void Solver::addSygusConstraint(const Term& term) const
   CVC5_API_TRY_CATCH_BEGIN;
   CVC5_API_SOLVER_CHECK_TERM(term);
   CVC5_API_ARG_CHECK_EXPECTED(
-      term.d_node->getType() == d_tm.d_nm->booleanType(), term)
+      CVC5_EQUAL(term.d_node->getType(), d_tm.d_nm->booleanType()), term)
       << "boolean term";
   CVC5_API_CHECK(d_slv->getOptions().quantifiers.sygus)
       << "cannot addSygusConstraint unless sygus is enabled (use --"
@@ -8804,7 +8756,7 @@ void Solver::addSygusAssume(const Term& term) const
   CVC5_API_TRY_CATCH_BEGIN;
   CVC5_API_SOLVER_CHECK_TERM(term);
   CVC5_API_ARG_CHECK_EXPECTED(
-      term.d_node->getType() == d_tm.d_nm->booleanType(), term)
+      CVC5_EQUAL(term.d_node->getType(), d_tm.d_nm->booleanType()), term)
       << "boolean term";
   CVC5_API_CHECK(d_slv->getOptions().quantifiers.sygus)
       << "cannot addSygusAssume unless sygus is enabled (use --"

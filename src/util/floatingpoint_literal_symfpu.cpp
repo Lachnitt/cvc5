@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Aina Niemetz, Mathias Preiner, Martin Brain
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -81,7 +78,7 @@ FloatingPointLiteral::FloatingPointLiteral(uint32_t exp_size,
 }
 
 FloatingPointLiteral::FloatingPointLiteral(
-    const FloatingPointSize& size, FloatingPointLiteral::SpecialConstKind kind)
+    const FloatingPointSize& size, CVC5_UNUSED FloatingPointLiteral::SpecialConstKind kind)
     : d_fp_size(size)
       ,
       d_symuf(SymFPUUnpackedFloatLiteral::makeNaN(size))

@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Clark Barrett, Gereon Kremer
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -56,7 +53,7 @@ Node TheoryEngineModelBuilder::Assigner::getNextAssignment()
   // does we assert false and return null.
   if (te.isFinished())
   {
-    Assert(false);
+    DebugUnhandled();
     return Node::null();
   }
   // must increment until we find one that is not in the assignment
@@ -557,7 +554,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
               }
               else
               {
-                Assert(false) << "Distinct base model values in the same "
+                DebugUnhandled() << "Distinct base model values in the same "
                                  "equivalence class "
                               << constRep << " " << n << std::endl;
               }
@@ -788,7 +785,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
         set<Node>* noRepSet = typeNoRepSet.getSet(t);
 
         // 1. Try to evaluate the EC's in this type
-        if (noRepSet != NULL && !noRepSet->empty())
+        if (noRepSet != nullptr && !noRepSet->empty())
         {
           Trace("model-builder") << "  Eval phase, working on type: " << t
                                  << endl;
@@ -835,7 +832,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
 
         // 2. Normalize any non-const representative terms for this type
         set<Node>* repSet = typeRepSet.getSet(t);
-        if (repSet != NULL && !repSet->empty())
+        if (repSet != nullptr && !repSet->empty())
         {
           Trace("model-builder")
               << "  Normalization phase, working on type: " << t << endl;
@@ -907,7 +904,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
       // continue if there are no more equivalence classes of this type to
       // assign
       std::set<Node>* noRepSetPtr = typeNoRepSet.getSet(t);
-      if (noRepSetPtr == NULL)
+      if (noRepSetPtr == nullptr)
       {
         continue;
       }
@@ -938,7 +935,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
       if (!assignOne)
       {
         set<Node>* repSet = typeRepSet.getSet(tb);
-        if (repSet != NULL && !repSet->empty())
+        if (repSet != nullptr && !repSet->empty())
         {
           continue;
         }
@@ -1044,7 +1041,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
 #endif
               if (success && isCorecursive)
               {
-                if (repSet != NULL && !repSet->empty())
+                if (repSet != nullptr && !repSet->empty())
                 {
                   // in the case of codatatypes, check if it is in the set of
                   // values that we cannot assign
@@ -1126,7 +1123,7 @@ bool TheoryEngineModelBuilder::buildModel(TheoryModel* tm)
       Trace("model-builder") << "***Non-empty repSet, size = " << repSet.size()
                              << ", repSet = " << repSet << endl;
       Trace("model-builder-debug") << tm->getEqualityEngine()->debugPrintEqc();
-      Assert(false);
+      DebugUnhandled();
     }
   }
 #endif /* CVC5_ASSERTIONS */
@@ -1218,7 +1215,7 @@ void TheoryEngineModelBuilder::debugCheckModel(TheoryModel* tm)
     for (; !eqc_i.isFinished(); ++eqc_i)
     {
       Node n = *eqc_i;
-      AlwaysAssert(rep.getType() == n.getType())
+      AlwaysAssert(CVC5_EQUAL(rep.getType(), n.getType()))
           << "Representative " << rep << " of " << n
           << " violates type constraints (" << rep.getType() << " and "
           << n.getType() << ")";
@@ -1317,12 +1314,12 @@ Node TheoryEngineModelBuilder::normalize(TheoryModel* m, TNode r, bool evalOnly)
   return retNode;
 }
 
-bool TheoryEngineModelBuilder::preProcessBuildModel(TheoryModel* m)
+bool TheoryEngineModelBuilder::preProcessBuildModel(CVC5_UNUSED TheoryModel* m)
 {
   return true;
 }
 
-bool TheoryEngineModelBuilder::processBuildModel(TheoryModel* m)
+bool TheoryEngineModelBuilder::processBuildModel(CVC5_UNUSED TheoryModel* m)
 {
   return true;
 }

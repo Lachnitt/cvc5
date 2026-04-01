@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Gereon Kremer, Mathias Preiner
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -168,7 +165,7 @@ Node TermDb::getGroundTerm(TNode f, size_t i) const
     Assert(i < it->second->d_list.size());
     return it->second->d_list[i];
   }
-  Assert(false);
+  DebugUnhandled();
   return Node::null();
 }
 
@@ -200,7 +197,7 @@ Node TermDb::getTypeGroundTerm(TypeNode tn, size_t i) const
     Assert(i < it->second->d_list.size());
     return it->second->d_list[i];
   }
-  Assert(false);
+  DebugUnhandled();
   return Node::null();
 }
 
@@ -532,7 +529,9 @@ void TermDb::computeUfTerms( TNode f ) {
 
 Node TermDb::getOperatorRepresentative(TNode op) const { return op; }
 
-bool TermDb::checkCongruentDisequal(TNode a, TNode b, std::vector<Node>& exp)
+bool TermDb::checkCongruentDisequal(TNode a,
+                                    TNode b,
+                                    CVC5_UNUSED std::vector<Node>& exp)
 {
   if (d_qstate.areDisequal(a, b))
   {
@@ -581,7 +580,7 @@ bool TermDb::hasTermCurrent(const Node& n, bool useMode) const
   {
     return d_has_map.find( n )!=d_has_map.end();
   }
-  Assert(false) << "TermDb::hasTermCurrent: Unknown termDbMode : "
+  DebugUnhandled() << "TermDb::hasTermCurrent: Unknown termDbMode : "
                 << options().quantifiers.termDbMode;
   return false;
 }
@@ -645,13 +644,13 @@ Node TermDb::getEligibleTermInEqc( TNode r ) {
   }
 }
 
-bool TermDb::finishResetInternal(Theory::Effort e)
+bool TermDb::finishResetInternal(CVC5_UNUSED Theory::Effort e)
 {
   // do nothing
   return true;
 }
 
-void TermDb::addTermInternal(Node n)
+void TermDb::addTermInternal(CVC5_UNUSED Node n)
 {
   // do nothing
 }
@@ -728,7 +727,7 @@ TNodeTrie* TermDb::getTermArgTrie(Node f)
   if( itut!=d_func_map_trie.end() ){
     return &itut->second;
   }else{
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -738,7 +737,7 @@ TNodeTrie* TermDb::getTermArgTrie(Node eqc, Node f)
   computeUfEqcTerms( f );
   std::map<Node, TNodeTrie>::iterator itut = d_func_map_eqc_trie.find(f);
   if( itut==d_func_map_eqc_trie.end() ){
-    return NULL;
+    return nullptr;
   }else{
     if( eqc.isNull() ){
       return &itut->second;
@@ -748,7 +747,7 @@ TNodeTrie* TermDb::getTermArgTrie(Node eqc, Node f)
       if( itute!=itut->second.d_data.end() ){
         return &itute->second;
       }else{
-        return NULL;
+        return nullptr;
       }
     }
   }

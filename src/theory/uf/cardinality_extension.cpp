@@ -1,10 +1,7 @@
 /******************************************************************************
- * Top contributors (to current version):
- *   Andrew Reynolds, Morgan Deters, Tim King
- *
  * This file is part of the cvc5 project.
  *
- * Copyright (c) 2009-2025 by the authors listed in the file AUTHORS
+ * Copyright (c) 2009-2026 by the authors listed in the file AUTHORS
  * in the top-level source directory and their institutional affiliations.
  * All rights reserved.  See the file COPYING in the top-level source
  * directory for licensing information.
@@ -400,7 +397,7 @@ void Region::getNumExternalDisequalities(
   }
 }
 
-void Region::debugPrint( const char* c, bool incClique ) {
+void Region::debugPrint(CVC5_UNUSED const char* c, bool incClique ) {
   Trace( c ) << "Num reps: " << d_reps_size << std::endl;
   for( Region::iterator it = begin(); it != end(); ++it ){
     RegionNodeInfo* rni = it->second;
@@ -1170,8 +1167,7 @@ bool SortModel::checkLastCall()
       {
         std::stringstream ss;
         ss << "r_" << d_type;
-        Node nn = NodeManager::mkDummySkolem(
-            ss.str(), d_type, "enumeration to meet negative card constraint");
+        Node nn = NodeManager::mkDummySkolem(ss.str(), d_type);
         d_fresh_aloc_reps.push_back( nn );
       }
       if (d_maxNegCard == 0)
@@ -1564,7 +1560,7 @@ void CardinalityExtension::check(Theory::Effort level)
     else
     {
       // unhandled uf ss mode
-      Assert(false);
+      DebugUnhandled();
     }
     Trace("uf-ss-solver") << "Done CardinalityExtension: check " << level
                           << std::endl;
@@ -1661,7 +1657,7 @@ SortModel* CardinalityExtension::getSortModel(Node n)
   if( it!=d_rep_model.end() ){
     return it->second;
   }else{
-    return NULL;
+    return nullptr;
   }
 }
 
