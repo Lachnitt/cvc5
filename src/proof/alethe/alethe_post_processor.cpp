@@ -901,7 +901,6 @@ bool AletheProofPostprocessCallback::update(Node res,
                               {vp1, vp2},
                               {},
                               *cdp);
->>>>>>> main
     }
     // ======== Encode equality introduction
     // This rule is translated according to the singleton pattern.
