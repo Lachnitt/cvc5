@@ -27,6 +27,11 @@ mkdir -p $ISABELLE_DIR
 ISABELLE_SETTINGS_DIR="$BASE_DIR/.isabelle"
 mkdir -p $ISABELLE_SETTINGS_DIR
 
+# Install dependencies
+# Unfortunately running Isabelle with -Djava.awt.headles
+apt-get update && apt-get install -y fontconfig fonts-dejavu
+
+
 # download and unpack Isabelle
 download "https://github.com/cvc5/isabelle-integration-evaluation/releases/download/IsabelleBinary/Isabelle.tar.gz" $BASE_DIR/tmp/Isabelle.tar.gz
 tar --strip 1 -xvf $BASE_DIR/tmp/Isabelle.tar.gz -C $ISABELLE_DIR
