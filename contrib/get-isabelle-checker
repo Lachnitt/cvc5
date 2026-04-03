@@ -29,6 +29,7 @@ mkdir -p $ISABELLE_SETTINGS_DIR
 
 # Install dependencies
 # Unfortunately running Isabelle with -Djava.awt.headles
+# Should I use curl and then build with make? How do I know what is installed?
 apt-get update && apt-get install -y fontconfig fonts-dejavu
 
 
@@ -44,4 +45,44 @@ export ISABELLE_HOME="$ISABELLE_DIR"
 export ISABELLE_HOME_USER="$ISABELLE_DIR"
 
 $ISABELLE_DIR/bin/isabelle components -a
+
+#This can take a while
 $ISABELLE_DIR/bin/isabelle build Main
+
+mkdir -p $BASE_DIR/bin
+
+
+cat << EOF > $BASE_DIR/bin/cvc5-isabelle-check.sh
+#!/usr/bin/env bash
+echo "=== Generate proof: \$@"
+echo "> \$2.alethe"
+$BASE_DIR/bin/cvc5-alethe-proof.sh \$@ > \$2.alethe
+echo "=== Check proof with Isabelle"
+$BASE_DIR/bin/isabelle-check.sh \$2.alethe \$2
+EOF
+chmod +x $BASE_DIR/bin/cvc5-isabelle-check.sh
+
+cat << EOF > $BASE_DIR/bin/cvc5-alethe-proof.sh
+#!/usr/bin/env bash
+# call cvc5 and remove the first line of the output (should be "unsat", "(", ")")
+\$@ --dump-proofs --proof-format=alethe | tail -n +3 | head -n -1
+EOF
+chmod +x $BASE_DIR/bin/cvc5-alethe-proof.sh
+
+cat << EOF > $BASE_DIR/bin/isabelle-check.sh
+#!/usr/bin/env bash
+$BASE_DIR/bin/isabelle check --allow-int-real-subtyping --expand-let-bindings --ignore-unknown-rules \$@ > isabelle.out
+cat isabelle.out
+rm isabelle.out
+EOF
+chmod +x $BASE_DIR/bin/isabelle-check.sh
+
+echo ""
+echo "========== How to use Isabelle =========="
+echo "Generate an Alethe proof with cvc5 (for terms printed without sharing, use --dag-thresh=0):"
+echo "  $CVC_DIR/deps/bin/cvc5-alethe-proof.sh cvc5 <input file> <options>"
+echo "Check a proof:"
+echo "  $CVC_DIR/deps/bin/isabelle-check.sh <proof file> <input file>"
+echo "Run cvc5 and check the generated proof:"
+echo "  $CVC_DIR/deps/bin/cvc5-isabelle-check.sh cvc5 <input file> <options>"
+
