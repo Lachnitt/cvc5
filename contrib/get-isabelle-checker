@@ -30,7 +30,7 @@ mkdir -p $ISABELLE_SETTINGS_DIR
 # Install dependencies
 # Unfortunately running Isabelle with -Djava.awt.headles
 # Should I use curl and then build with make? How do I know what is installed?
-apt-get update && apt-get install -y fontconfig fonts-dejavu
+#apt-get update && apt-get install -y fontconfig fonts-dejavu
 
 
 # download and unpack Isabelle
@@ -50,7 +50,7 @@ $ISABELLE_DIR/bin/isabelle components -a
 $ISABELLE_DIR/bin/isabelle build Main
 
 mkdir -p $BASE_DIR/bin
-
+cp $ISABELLE_DIR/bin/isabelle $BAS_DIR/bin/isabelle
 
 cat << EOF > $BASE_DIR/bin/cvc5-isabelle-check.sh
 #!/usr/bin/env bash
